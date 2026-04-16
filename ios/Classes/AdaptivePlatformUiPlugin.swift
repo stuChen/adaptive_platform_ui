@@ -61,7 +61,15 @@ public class AdaptivePlatformUiPlugin: NSObject, FlutterPlugin {
         )
 
         // Register iOS 26 Toolbar platform view factory
-        let ios26ToolbarFactory = iOS26ToolbarFactory(messenger: registrar.messenger())
+        let ios26ToolbarFactory = iOS26ToolbarFactory(
+            messenger: registrar.messenger(),
+            assetKeyResolver: { asset, package in
+                if let package {
+                    return registrar.lookupKey(forAsset: asset, fromPackage: package)
+                }
+                return registrar.lookupKey(forAsset: asset)
+            }
+        )
         registrar.register(
             ios26ToolbarFactory,
             withId: "adaptive_platform_ui/ios26_toolbar"

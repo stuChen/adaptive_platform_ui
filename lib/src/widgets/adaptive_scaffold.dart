@@ -292,18 +292,12 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
                     children: widget.appBar!.actions!.map((action) {
-                      Widget actionChild;
-                      if (action.title != null) {
-                        actionChild = Text(action.title!);
-                      } else if (action.icon != null) {
-                        actionChild = Icon(action.icon!);
-                      } else {
-                        actionChild = const Icon(CupertinoIcons.circle);
-                      }
                       return CupertinoButton(
                         padding: EdgeInsets.zero,
                         onPressed: action.onPressed,
-                        child: actionChild,
+                        child: action.buildContent(
+                          fallbackIcon: CupertinoIcons.circle,
+                        ),
                       );
                     }).toList(),
                   )
@@ -505,18 +499,12 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               ? Row(
                   mainAxisSize: MainAxisSize.min,
                   children: widget.appBar!.actions!.map((action) {
-                    Widget actionChild;
-                    if (action.title != null) {
-                      actionChild = Text(action.title!);
-                    } else if (action.icon != null) {
-                      actionChild = Icon(action.icon!);
-                    } else {
-                      actionChild = const Icon(CupertinoIcons.circle);
-                    }
                     return CupertinoButton(
                       padding: EdgeInsets.zero,
                       onPressed: action.onPressed,
-                      child: actionChild,
+                      child: action.buildContent(
+                        fallbackIcon: CupertinoIcons.circle,
+                      ),
                     );
                   }).toList(),
                 )
@@ -592,9 +580,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               );
             }
             return IconButton(
-              icon: action.icon != null
-                  ? Icon(action.icon!)
-                  : const Icon(Icons.circle),
+              icon: action.buildContent(fallbackIcon: Icons.circle),
               onPressed: action.onPressed,
             );
           }).toList(),
@@ -697,9 +683,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
             );
           }
           return IconButton(
-            icon: action.icon != null
-                ? Icon(action.icon!)
-                : const Icon(Icons.circle),
+            icon: action.buildContent(fallbackIcon: Icons.circle),
             onPressed: action.onPressed,
           );
         }).toList(),

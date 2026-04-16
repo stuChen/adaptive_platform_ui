@@ -22,14 +22,17 @@ class AdaptiveAppBarAction {
   const AdaptiveAppBarAction({
     this.iosSymbol,
     this.icon,
+    this.image,
+    this.imageSize = 20,
+    this.imageFit = BoxFit.contain,
     this.title,
     required this.onPressed,
     this.spacerAfter = ToolbarSpacerType.none,
     this.prominent = false,
     this.tintColor,
   }) : assert(
-         iosSymbol != null || icon != null || title != null,
-         'At least one of iosSymbol, icon, or title must be provided',
+         iosSymbol != null || icon != null || image != null || title != null,
+         'At least one of iosSymbol, icon, image, or title must be provided',
        );
 
   /// SF Symbol name for iOS 26+ ONLY (e.g., 'info.circle', 'plus.circle')
@@ -44,8 +47,25 @@ class AdaptiveAppBarAction {
   /// - Android: Used for IconButton
   final IconData? icon;
 
+  /// Custom image for iOS <26 and Android.
+  /// Accepts any [ImageProvider], such as [AssetImage], [NetworkImage], or
+  /// [MemoryImage].
+  ///
+  /// - iOS 26+ native toolbar: [AssetImage] is bridged to a native
+  ///   `UIBarButtonItem(image:)`. Other image providers fall back to the
+  ///   Flutter-rendered implementation.
+  /// - iOS <26: Used in CupertinoButton
+  /// - Android: Used in IconButton
+  final ImageProvider? image;
+
+  /// The rendered square size of [image].
+  final double imageSize;
+
+  /// How [image] should be inscribed into its space.
+  final BoxFit imageFit;
+
   /// Text title for the action (optional)
-  /// If provided along with icons, title takes precedence
+  /// If provided along with icons or image, title takes precedence
   final String? title;
 
   /// Callback when the action is tapped
@@ -78,28 +98,73 @@ class AdaptiveAppBarAction {
   /// - iOS <26 / Android: Ignored
   final Color? tintColor;
 
+  /// Whether this action requires the Flutter-rendered toolbar fallback.
+  bool get requiresFlutterToolbar => image != null && image is! AssetImage;
+
+  /// Builds the visual content for Flutter-rendered toolbars.
+  Widget buildContent({required IconData fallbackIcon}) {
+    if (title != null) {
+      return Text(title!);
+    }
+    if (image != null) {
+      return Image(
+        image: image!,
+        width: imageSize,
+        height: imageSize,
+        fit: imageFit,
+      );
+    }
+    if (icon != null) {
+      return Icon(icon!);
+    }
+    return Icon(fallbackIcon);
+  }
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is AdaptiveAppBarAction &&
         other.iosSymbol == iosSymbol &&
         other.icon == icon &&
+        other.image == image &&
+        other.imageSize == imageSize &&
+        other.imageFit == imageFit &&
         other.title == title &&
         other.prominent == prominent &&
         other.tintColor == tintColor;
   }
 
   @override
-  int get hashCode => Object.hash(iosSymbol, icon, title, prominent, tintColor);
+  int get hashCode => Object.hash(
+    iosSymbol,
+    icon,
+    image,
+    imageSize,
+    imageFit,
+    title,
+    prominent,
+    tintColor,
+  );
 
   /// Convert action to map for native platform channel (iOS 26+ only)
   Map<String, dynamic> toNativeMap() {
-    return {
+    final map = <String, dynamic>{
       if (iosSymbol != null) 'icon': iosSymbol!,
       if (title != null) 'title': title!,
       'spacerAfter': spacerAfter.index, // 0=none, 1=fixed, 2=flexible
       if (prominent) 'prominent': true,
       if (tintColor != null) 'tint': tintColor!.toARGB32(),
     };
+
+    final imageProvider = image;
+    if (imageProvider is AssetImage) {
+      map['imageAsset'] = imageProvider.assetName;
+      if (imageProvider.package != null) {
+        map['imagePackage'] = imageProvider.package!;
+      }
+      map['imageSize'] = imageSize;
+    }
+
+    return map;
   }
 }

@@ -4,9 +4,14 @@ import Flutter
 // MARK: - Factory
 class iOS26ToolbarFactory: NSObject, FlutterPlatformViewFactory {
     private var messenger: FlutterBinaryMessenger
+    private let assetKeyResolver: (String, String?) -> String
 
-    init(messenger: FlutterBinaryMessenger) {
+    init(
+        messenger: FlutterBinaryMessenger,
+        assetKeyResolver: @escaping (String, String?) -> String
+    ) {
         self.messenger = messenger
+        self.assetKeyResolver = assetKeyResolver
         super.init()
     }
 
@@ -19,7 +24,8 @@ class iOS26ToolbarFactory: NSObject, FlutterPlatformViewFactory {
             frame: frame,
             viewIdentifier: viewId,
             arguments: args,
-            binaryMessenger: messenger
+            binaryMessenger: messenger,
+            assetKeyResolver: assetKeyResolver
         )
     }
 
@@ -53,6 +59,7 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
     private var navigationBar: UINavigationBar
     private var navigationItem: UINavigationItem
     private var channel: FlutterMethodChannel
+    private let assetKeyResolver: (String, String?) -> String
 
     private var isDark: Bool = false
     private var perActionTintTags: Set<Int> = []
@@ -61,11 +68,13 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
         frame: CGRect,
         viewIdentifier viewId: Int64,
         arguments args: Any?,
-        binaryMessenger messenger: FlutterBinaryMessenger
+        binaryMessenger messenger: FlutterBinaryMessenger,
+        assetKeyResolver: @escaping (String, String?) -> String
     ) {
         containerView = ToolbarContainerView(frame: frame)
         navigationBar = UINavigationBar()
         navigationItem = UINavigationItem()
+        self.assetKeyResolver = assetKeyResolver
         channel = FlutterMethodChannel(
             name: "adaptive_platform_ui/ios26_toolbar_\(viewId)",
             binaryMessenger: messenger
@@ -212,7 +221,22 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
             for (index, action) in actions.enumerated() {
                 var button: UIBarButtonItem?
 
-                if let icon = action["icon"] as? String {
+                if let assetName = action["imageAsset"] as? String {
+                    let package = action["imagePackage"] as? String
+                    let pointSize = action["imageSize"] as? Double ?? 20
+                    if let image = loadActionImage(
+                        assetName: assetName,
+                        package: package,
+                        pointSize: pointSize
+                    ) {
+                        button = UIBarButtonItem(
+                            image: image,
+                            style: .plain,
+                            target: self,
+                            action: #selector(actionTapped(_:))
+                        )
+                    }
+                } else if let icon = action["icon"] as? String {
                     button = UIBarButtonItem(
                         image: UIImage(systemName: icon),
                         style: .plain,
@@ -356,5 +380,49 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
         let g = CGFloat((argb >> 8) & 0xFF) / 255.0
         let b = CGFloat(argb & 0xFF) / 255.0
         return UIColor(red: r, green: g, blue: b, alpha: a)
+    }
+
+    private func loadActionImage(
+        assetName: String,
+        package: String?,
+        pointSize: Double
+    ) -> UIImage? {
+        let assetKey = assetKeyResolver(assetName, package)
+
+        let image =
+            UIImage(named: assetKey) ??
+            Bundle.main.path(forResource: assetKey, ofType: nil).flatMap(UIImage.init(contentsOfFile:))
+
+        guard let image else { return nil }
+        return resizedImage(image, pointSize: pointSize)
+    }
+
+    private func resizedImage(_ image: UIImage, pointSize: Double) -> UIImage {
+        let targetSize = CGSize(width: pointSize, height: pointSize)
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = image.scale
+        format.opaque = false
+
+        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
+        let scaledImage = renderer.image { _ in
+            let drawRect = aspectFitRect(imageSize: image.size, targetSize: targetSize)
+            image.draw(in: drawRect)
+        }
+
+        return scaledImage.withRenderingMode(.alwaysOriginal)
+    }
+
+    private func aspectFitRect(imageSize: CGSize, targetSize: CGSize) -> CGRect {
+        guard imageSize.width > 0, imageSize.height > 0 else {
+            return CGRect(origin: .zero, size: targetSize)
+        }
+
+        let scale = min(targetSize.width / imageSize.width, targetSize.height / imageSize.height)
+        let size = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+        let origin = CGPoint(
+            x: (targetSize.width - size.width) / 2,
+            y: (targetSize.height - size.height) / 2
+        )
+        return CGRect(origin: origin, size: size)
     }
 }

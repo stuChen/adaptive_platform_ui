@@ -51,13 +51,17 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
   bool get _isDark =>
       MediaQuery.platformBrightnessOf(context) == Brightness.dark;
 
+  bool get _requiresFlutterToolbar =>
+      widget.actions?.any((action) => action.requiresFlutterToolbar) ?? false;
+
   int _colorToARGB(Color color) {
     // Resolve CupertinoDynamicColor if needed
     Color resolvedColor = color;
     if (color is CupertinoDynamicColor) {
       final brightness = MediaQuery.platformBrightnessOf(context);
-      resolvedColor =
-          brightness == Brightness.dark ? color.darkColor : color.color;
+      resolvedColor = brightness == Brightness.dark
+          ? color.darkColor
+          : color.color;
     }
 
     return ((resolvedColor.a * 255.0).round() & 0xff) << 24 |
@@ -116,8 +120,9 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
     }
 
     // Sync tint color
-    final tint =
-        widget.tintColor != null ? _colorToARGB(widget.tintColor!) : null;
+    final tint = widget.tintColor != null
+        ? _colorToARGB(widget.tintColor!)
+        : null;
     if (_lastTint != tint) {
       try {
         await ch.invokeMethod('setStyle', {'tint': tint});
@@ -129,7 +134,9 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
   }
 
   bool _actionsEqual(
-      List<AdaptiveAppBarAction>? a, List<AdaptiveAppBarAction>? b) {
+    List<AdaptiveAppBarAction>? a,
+    List<AdaptiveAppBarAction>? b,
+  ) {
     if (identical(a, b)) return true;
     if (a == null || b == null) return false;
     if (a.length != b.length) return false;
@@ -141,7 +148,8 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
 
   @override
   Widget build(BuildContext context) {
-    if (defaultTargetPlatform != TargetPlatform.iOS) {
+    if (defaultTargetPlatform != TargetPlatform.iOS ||
+        _requiresFlutterToolbar) {
       return _buildFallbackToolbar();
     }
 
@@ -189,10 +197,10 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
     _channel = MethodChannel('adaptive_platform_ui/ios26_toolbar_$id');
     _channel!.setMethodCallHandler(_handleMethodCall);
     _lastIsDark = _isDark;
-    _lastTint =
-        widget.tintColor != null ? _colorToARGB(widget.tintColor!) : null;
-    _lastActions =
-        widget.actions != null ? List.of(widget.actions!) : null;
+    _lastTint = widget.tintColor != null
+        ? _colorToARGB(widget.tintColor!)
+        : null;
+    _lastActions = widget.actions != null ? List.of(widget.actions!) : null;
   }
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {
@@ -220,9 +228,9 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
                 return CupertinoButton(
                   padding: EdgeInsets.zero,
                   onPressed: action.onPressed,
-                  child: action.icon != null
-                      ? Icon(action.icon)
-                      : Text(action.title ?? ''),
+                  child: action.buildContent(
+                    fallbackIcon: CupertinoIcons.circle,
+                  ),
                 );
               }).toList(),
             )

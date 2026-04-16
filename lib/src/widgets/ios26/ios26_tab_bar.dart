@@ -93,7 +93,7 @@ class _TabBarItem extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(_getIcon(), color: iconColor, size: 24),
+          _buildIcon(iconColor),
           const SizedBox(height: 2),
           Text(
             destination.label,
@@ -108,17 +108,31 @@ class _TabBarItem extends StatelessWidget {
     );
   }
 
-  IconData _getIcon() {
+  Widget _buildIcon(Color iconColor) {
+    final assetPath = isSelected && destination.selectedIconAsset != null
+        ? destination.selectedIconAsset
+        : destination.iconAsset;
+    if (assetPath != null) {
+      final dimension = destination.iconSize ?? 24.0;
+      return Image.asset(
+        assetPath,
+        package: destination.assetPackage,
+        width: dimension,
+        height: dimension,
+        fit: BoxFit.contain,
+      );
+    }
+
     final icon = isSelected && destination.selectedIcon != null
         ? destination.selectedIcon
         : destination.icon;
 
     if (icon is IconData) {
-      return icon;
+      return Icon(icon, color: iconColor, size: 24);
     } else if (icon is String) {
-      return _sfSymbolToCupertinoIcon(icon);
+      return Icon(_sfSymbolToCupertinoIcon(icon), color: iconColor, size: 24);
     }
-    return CupertinoIcons.circle;
+    return Icon(CupertinoIcons.circle, color: iconColor, size: 24);
   }
 
   IconData _sfSymbolToCupertinoIcon(String sfSymbol) {

@@ -53,6 +53,10 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   double? _intrinsicHeight;
   List<String>? _lastLabels;
   List<String>? _lastSymbols;
+  List<String>? _lastIconAssets;
+  List<String>? _lastSelectedIconAssets;
+  List<String>? _lastAssetPackages;
+  List<double?>? _lastIconSizes;
   List<int?>? _lastBadgeCounts;
   TabBarMinimizeBehavior? _lastMinimizeBehavior;
   bool? _lastHidden;
@@ -110,6 +114,16 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
 
       final searchFlags = widget.destinations.map((e) => e.isSearch).toList();
       final badgeCounts = widget.destinations.map((e) => e.badgeCount).toList();
+      final iconAssets = widget.destinations
+          .map((e) => e.iconAsset ?? '')
+          .toList();
+      final selectedIconAssets = widget.destinations
+          .map((e) => e.selectedIconAsset ?? '')
+          .toList();
+      final assetPackages = widget.destinations
+          .map((e) => e.assetPackage ?? '')
+          .toList();
+      final iconSizes = widget.destinations.map((e) => e.iconSize).toList();
       final spacerFlags = widget.destinations
           .map((e) => e.addSpacerAfter)
           .toList();
@@ -117,6 +131,10 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
       final creationParams = <String, dynamic>{
         'labels': labels,
         'sfSymbols': symbols,
+        'iconAssets': iconAssets,
+        'selectedIconAssets': selectedIconAssets,
+        'assetPackages': assetPackages,
+        'iconSizes': iconSizes,
         'searchFlags': searchFlags,
         'badgeCounts': badgeCounts,
         'spacerFlags': spacerFlags,
@@ -261,18 +279,40 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
     }).toList();
     final searchFlags = widget.destinations.map((e) => e.isSearch).toList();
     final badgeCounts = widget.destinations.map((e) => e.badgeCount).toList();
+    final iconAssets = widget.destinations
+        .map((e) => e.iconAsset ?? '')
+        .toList();
+    final selectedIconAssets = widget.destinations
+        .map((e) => e.selectedIconAsset ?? '')
+        .toList();
+    final assetPackages = widget.destinations
+        .map((e) => e.assetPackage ?? '')
+        .toList();
+    final iconSizes = widget.destinations.map((e) => e.iconSize).toList();
 
     if (_lastLabels?.join('|') != labels.join('|') ||
-        _lastSymbols?.join('|') != symbols.join('|')) {
+        _lastSymbols?.join('|') != symbols.join('|') ||
+        _lastIconAssets?.join('|') != iconAssets.join('|') ||
+        _lastSelectedIconAssets?.join('|') != selectedIconAssets.join('|') ||
+        _lastAssetPackages?.join('|') != assetPackages.join('|') ||
+        !_listEqualsWithNullables(_lastIconSizes, iconSizes)) {
       await ch.invokeMethod('setItems', {
         'labels': labels,
         'sfSymbols': symbols,
+        'iconAssets': iconAssets,
+        'selectedIconAssets': selectedIconAssets,
+        'assetPackages': assetPackages,
+        'iconSizes': iconSizes,
         'searchFlags': searchFlags,
         'badgeCounts': badgeCounts,
         'selectedIndex': widget.selectedIndex,
       });
       _lastLabels = labels;
       _lastSymbols = symbols;
+      _lastIconAssets = iconAssets;
+      _lastSelectedIconAssets = selectedIconAssets;
+      _lastAssetPackages = assetPackages;
+      _lastIconSizes = iconSizes;
       _requestIntrinsicSize();
     }
 
@@ -316,7 +356,25 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
       if (icon is String) return icon;
       return '';
     }).toList();
+    _lastIconAssets = widget.destinations
+        .map((e) => e.iconAsset ?? '')
+        .toList();
+    _lastSelectedIconAssets = widget.destinations
+        .map((e) => e.selectedIconAsset ?? '')
+        .toList();
+    _lastAssetPackages = widget.destinations
+        .map((e) => e.assetPackage ?? '')
+        .toList();
+    _lastIconSizes = widget.destinations.map((e) => e.iconSize).toList();
     _lastBadgeCounts = widget.destinations.map((e) => e.badgeCount).toList();
+  }
+
+  bool _listEqualsWithNullables(List<double?>? a, List<double?> b) {
+    if (a == null || a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   Future<void> _syncHiddenIfNeeded() async {

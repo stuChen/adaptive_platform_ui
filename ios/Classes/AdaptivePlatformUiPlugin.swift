@@ -54,7 +54,15 @@ public class AdaptivePlatformUiPlugin: NSObject, FlutterPlugin {
         )
 
         // Register iOS 26 TabBar platform view factory
-        let ios26TabBarFactory = iOS26TabBarViewFactory(messenger: registrar.messenger())
+        let ios26TabBarFactory = iOS26TabBarViewFactory(
+            messenger: registrar.messenger(),
+            assetKeyResolver: { asset, package in
+                if let package {
+                    return registrar.lookupKey(forAsset: asset, fromPackage: package)
+                }
+                return registrar.lookupKey(forAsset: asset)
+            }
+        )
         registrar.register(
             ios26TabBarFactory,
             withId: "adaptive_platform_ui/ios26_tab_bar"

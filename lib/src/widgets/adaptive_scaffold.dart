@@ -12,22 +12,44 @@ import 'ios26/ios26_scaffold.dart';
 /// Navigation destination for bottom navigation
 class AdaptiveNavigationDestination {
   const AdaptiveNavigationDestination({
-    required this.icon,
+    this.icon,
     required this.label,
     this.selectedIcon,
+    this.iconAsset,
+    this.selectedIconAsset,
+    this.assetPackage,
+    this.iconSize,
     this.isSearch = false,
     this.badgeCount,
     this.addSpacerAfter = false,
-  });
+  }) : assert(
+         icon != null || iconAsset != null,
+         'Either icon or iconAsset must be provided.',
+       );
 
   /// Icon to display (SF Symbol name for iOS, IconData for cross-platform)
-  final dynamic icon;
+  final Object? icon;
 
   /// Label text for the destination
   final String label;
 
   /// Optional selected state icon
-  final dynamic selectedIcon;
+  final Object? selectedIcon;
+
+  /// Asset image for the icon.
+  /// When provided, this is rendered instead of [icon].
+  final String? iconAsset;
+
+  /// Optional asset image for the selected state.
+  /// Falls back to [iconAsset] when omitted.
+  final String? selectedIconAsset;
+
+  /// Optional package name used to resolve [iconAsset] and [selectedIconAsset].
+  final String? assetPackage;
+
+  /// Optional size used for custom asset icons.
+  /// Defaults to `24.0` when omitted.
+  final double? iconSize;
 
   /// Whether this is a search tab (iOS 26+)
   /// Search tabs are visually separated and transform into a search field
@@ -340,40 +362,30 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               onTap: widget.bottomNavigationBar!.onTap!,
               activeColor: widget.bottomNavigationBar!.selectedItemColor,
               items: widget.bottomNavigationBar!.items!.map((dest) {
-                // Convert icon to IconData if it's a String (SF Symbol)
-                final IconData iconData = dest.icon is String
-                    ? _sfSymbolToCupertinoIcon(dest.icon as String)
-                    : dest.icon as IconData;
-
-                final IconData? selectedIconData = dest.selectedIcon != null
-                    ? (dest.selectedIcon is String
-                          ? _sfSymbolToCupertinoIcon(
-                              dest.selectedIcon as String,
-                            )
-                          : dest.selectedIcon as IconData)
-                    : null;
-
                 // Wrap icons with badge if badgeCount is provided
-                // Only apply color if unselectedItemColor is provided
-                Widget iconWidget = unselectedColor != null
-                    ? Icon(iconData, color: unselectedColor)
-                    : Icon(iconData);
-                Widget activeIconWidget = selectedIconData != null
-                    ? Icon(selectedIconData)
-                    : Icon(iconData);
+                Widget iconWidget = _buildCupertinoDestinationIcon(
+                  dest,
+                  color: unselectedColor,
+                );
+                Widget activeIconWidget = _buildCupertinoDestinationIcon(
+                  dest,
+                  isSelected: true,
+                );
 
                 if (dest.badgeCount != null && dest.badgeCount! > 0) {
                   iconWidget = AdaptiveBadge(
                     count: dest.badgeCount,
-                    child: unselectedColor != null
-                        ? Icon(iconData, color: unselectedColor)
-                        : Icon(iconData),
+                    child: _buildCupertinoDestinationIcon(
+                      dest,
+                      color: unselectedColor,
+                    ),
                   );
                   activeIconWidget = AdaptiveBadge(
                     count: dest.badgeCount,
-                    child: selectedIconData != null
-                        ? Icon(selectedIconData)
-                        : Icon(iconData),
+                    child: _buildCupertinoDestinationIcon(
+                      dest,
+                      isSelected: true,
+                    ),
                   );
                 }
 
@@ -602,35 +614,21 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
           onDestinationSelected: widget.bottomNavigationBar!.onTap!,
           indicatorColor: widget.bottomNavigationBar!.selectedItemColor,
           destinations: widget.bottomNavigationBar!.items!.map((dest) {
-            // Convert icon to IconData if it's a String (SF Symbol - fallback to Icons)
-            final IconData iconData = dest.icon is String
-                ? Icons
-                      .circle // Fallback for Android if SF Symbol is provided
-                : dest.icon as IconData;
-
-            final IconData? selectedIconData = dest.selectedIcon != null
-                ? (dest.selectedIcon is String
-                      ? Icons
-                            .circle // Fallback for Android
-                      : dest.selectedIcon as IconData)
-                : null;
-
             // Wrap icons with badge if badgeCount is provided
-            Widget iconWidget = Icon(iconData);
-            Widget selectedIconWidget = selectedIconData != null
-                ? Icon(selectedIconData)
-                : Icon(iconData);
+            Widget iconWidget = _buildMaterialDestinationIcon(dest);
+            Widget selectedIconWidget = _buildMaterialDestinationIcon(
+              dest,
+              isSelected: true,
+            );
 
             if (dest.badgeCount != null && dest.badgeCount! > 0) {
               iconWidget = AdaptiveBadge(
                 count: dest.badgeCount,
-                child: Icon(iconData),
+                child: _buildMaterialDestinationIcon(dest),
               );
               selectedIconWidget = AdaptiveBadge(
                 count: dest.badgeCount,
-                child: selectedIconData != null
-                    ? Icon(selectedIconData)
-                    : Icon(iconData),
+                child: _buildMaterialDestinationIcon(dest, isSelected: true),
               );
             }
 
@@ -734,6 +732,77 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       'checkmark.circle': CupertinoIcons.checkmark_circle,
     };
     return iconMap[sfSymbol] ?? CupertinoIcons.circle;
+  }
+
+  Widget _buildCupertinoDestinationIcon(
+    AdaptiveNavigationDestination destination, {
+    bool isSelected = false,
+    Color? color,
+  }) {
+    final assetPath = _resolveDestinationAsset(
+      destination,
+      isSelected: isSelected,
+    );
+    if (assetPath != null) {
+      return _buildDestinationAssetImage(destination, assetPath);
+    }
+
+    final icon = _resolveDestinationIcon(destination, isSelected: isSelected);
+    final iconData = icon is String
+        ? _sfSymbolToCupertinoIcon(icon)
+        : (icon as IconData? ?? CupertinoIcons.circle);
+    return color != null ? Icon(iconData, color: color) : Icon(iconData);
+  }
+
+  Widget _buildMaterialDestinationIcon(
+    AdaptiveNavigationDestination destination, {
+    bool isSelected = false,
+  }) {
+    final assetPath = _resolveDestinationAsset(
+      destination,
+      isSelected: isSelected,
+    );
+    if (assetPath != null) {
+      return _buildDestinationAssetImage(destination, assetPath);
+    }
+
+    final icon = _resolveDestinationIcon(destination, isSelected: isSelected);
+    final iconData = icon is IconData ? icon : Icons.circle;
+    return Icon(iconData);
+  }
+
+  Widget _buildDestinationAssetImage(
+    AdaptiveNavigationDestination destination,
+    String assetPath,
+  ) {
+    final dimension = destination.iconSize ?? 24.0;
+    return Image.asset(
+      assetPath,
+      package: destination.assetPackage,
+      width: dimension,
+      height: dimension,
+      fit: BoxFit.contain,
+    );
+  }
+
+  String? _resolveDestinationAsset(
+    AdaptiveNavigationDestination destination, {
+    required bool isSelected,
+  }) {
+    if (isSelected && destination.selectedIconAsset != null) {
+      return destination.selectedIconAsset;
+    }
+    return destination.iconAsset;
+  }
+
+  Object? _resolveDestinationIcon(
+    AdaptiveNavigationDestination destination, {
+    required bool isSelected,
+  }) {
+    if (isSelected && destination.selectedIcon != null) {
+      return destination.selectedIcon;
+    }
+    return destination.icon;
   }
 }
 

@@ -1,6 +1,45 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+class _TestAssetBundle extends CachingAssetBundle {
+  _TestAssetBundle(this.assetBytes);
+
+  final ByteData assetBytes;
+
+  static final ByteData _manifestBin = (() {
+    final encoded = const StandardMessageCodec().encodeMessage({
+      'assets/custom_tab.png': [
+        {'asset': 'assets/custom_tab.png'},
+      ],
+    })!;
+    return encoded;
+  })();
+
+  static final ByteData _manifestJson = ByteData.view(
+    Uint8List.fromList(
+      utf8.encode('{"assets/custom_tab.png":["assets/custom_tab.png"]}'),
+    ).buffer,
+  );
+
+  @override
+  Future<ByteData> load(String key) async {
+    switch (key) {
+      case 'assets/custom_tab.png':
+        return assetBytes;
+      case 'AssetManifest.bin':
+        return _manifestBin;
+      case 'AssetManifest.json':
+        return _manifestJson;
+      default:
+        throw FlutterError('Unable to load asset: $key');
+    }
+  }
+}
 
 void main() {
   group('AdaptiveSnackBar', () {
@@ -613,6 +652,52 @@ void main() {
       // Badge counts should be visible
       expect(find.text('5'), findsOneWidget);
       expect(find.text('10'), findsOneWidget);
+    });
+
+    testWidgets('renders asset icons on items', (WidgetTester tester) async {
+      final transparentPixel = base64Decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wn0nXsAAAAASUVORK5CYII=',
+      );
+      final assetBundle = _TestAssetBundle(
+        ByteData.view(Uint8List.fromList(transparentPixel).buffer),
+      );
+
+      await tester.pumpWidget(
+        DefaultAssetBundle(
+          bundle: assetBundle,
+          child: MaterialApp(
+            home: AdaptiveScaffold(
+              body: const Text('Home'),
+              bottomNavigationBar: AdaptiveBottomNavigationBar(
+                items: const [
+                  AdaptiveNavigationDestination(
+                    iconAsset: 'assets/custom_tab.png',
+                    label: 'Home',
+                  ),
+                  AdaptiveNavigationDestination(
+                    icon: Icons.person,
+                    label: 'Profile',
+                  ),
+                ],
+                selectedIndex: 0,
+                onTap: (index) {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Image &&
+              widget.image is AssetImage &&
+              (widget.image as AssetImage).assetName == 'assets/custom_tab.png',
+        ),
+        findsOneWidget,
+      );
     });
   });
 }

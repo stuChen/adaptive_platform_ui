@@ -32,16 +32,9 @@ class _MainPageState extends State<MainPage> {
                   selectedIndex: widget.navigationShell.currentIndex,
                   onTap: (index) => onDestinationSelected(index, context),
                   items: [
-                    AdaptiveNavigationDestination(
-                      icon: PlatformInfo.isIOS26OrHigher()
-                          ? "house.fill"
-                          : PlatformInfo.isIOS
-                          ? CupertinoIcons.home
-                          : Icons.home_outlined,
-
-                      selectedIcon: PlatformInfo.isIOS
-                          ? CupertinoIcons.home
-                          : Icons.home,
+                    const AdaptiveNavigationDestination(
+                      iconAsset: 'assets/icon_star.png',
+                      selectedIconAsset: 'assets/settings.png',
                       label: 'Home',
                       badgeCount: 1,
                     ),

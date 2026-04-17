@@ -30,9 +30,8 @@ class _HomePageState extends State<HomePage> {
         actions: [
           if (PlatformInfo.isIOS26OrHigher()) ...[
             AdaptiveAppBarAction(
-              iosSymbol: 'arrow.uturn.backward',
-              icon: Icons.undo,
-
+              image: const AssetImage('assets/icon_star.png'),
+              imageSize: 32,
               onPressed: () {
                 if (kDebugMode) {
                   print("Undo action pressed");
@@ -52,8 +51,8 @@ class _HomePageState extends State<HomePage> {
             ),
             // Markup group
             AdaptiveAppBarAction(
-              iosSymbol: 'pencil.tip.crop.circle',
-              icon: Icons.edit,
+              image: const AssetImage('assets/settings.png'),
+              imageSize: 32,
               onPressed: () {
                 if (kDebugMode) {
                   print("Edit action pressed");

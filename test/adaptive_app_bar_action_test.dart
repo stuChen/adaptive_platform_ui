@@ -1,8 +1,84 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
 
 void main() {
+  final testImage = MemoryImage(
+    Uint8List.fromList(const <int>[
+      0x89,
+      0x50,
+      0x4E,
+      0x47,
+      0x0D,
+      0x0A,
+      0x1A,
+      0x0A,
+      0x00,
+      0x00,
+      0x00,
+      0x0D,
+      0x49,
+      0x48,
+      0x44,
+      0x52,
+      0x00,
+      0x00,
+      0x00,
+      0x01,
+      0x00,
+      0x00,
+      0x00,
+      0x01,
+      0x08,
+      0x06,
+      0x00,
+      0x00,
+      0x00,
+      0x1F,
+      0x15,
+      0xC4,
+      0x89,
+      0x00,
+      0x00,
+      0x00,
+      0x0D,
+      0x49,
+      0x44,
+      0x41,
+      0x54,
+      0x78,
+      0x9C,
+      0x63,
+      0xF8,
+      0xCF,
+      0xC0,
+      0x00,
+      0x00,
+      0x03,
+      0x01,
+      0x01,
+      0x00,
+      0x18,
+      0xDD,
+      0x8D,
+      0xB1,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x49,
+      0x45,
+      0x4E,
+      0x44,
+      0xAE,
+      0x42,
+      0x60,
+      0x82,
+    ]),
+  );
+
   group('AdaptiveAppBarAction', () {
     test('creates action with iOS symbol', () {
       final action = AdaptiveAppBarAction(
@@ -28,6 +104,15 @@ void main() {
 
       expect(action.title, 'Info');
       expect(action.iosSymbol, isNull);
+      expect(action.icon, isNull);
+    });
+
+    test('creates action with custom image', () {
+      final action = AdaptiveAppBarAction(image: testImage, onPressed: () {});
+
+      expect(action.image, same(testImage));
+      expect(action.imageSize, 20);
+      expect(action.title, isNull);
       expect(action.icon, isNull);
     });
 
@@ -188,6 +273,16 @@ void main() {
       expect(map['spacerAfter'], 0); // Default is ToolbarSpacerType.none
     });
 
+    test('toNativeMap excludes image parameter', () {
+      final action = AdaptiveAppBarAction(image: testImage, onPressed: () {});
+
+      final map = action.toNativeMap();
+
+      expect(map.containsKey('icon'), isFalse);
+      expect(map.containsKey('title'), isFalse);
+      expect(map['spacerAfter'], 0);
+    });
+
     test('equality ignores onPressed callback', () {
       final action1 = AdaptiveAppBarAction(title: 'Test', onPressed: () {});
 
@@ -233,6 +328,25 @@ void main() {
       final map = action.toNativeMap();
 
       expect(map['spacerAfter'], 2); // ToolbarSpacerType.flexible.index
+    });
+
+    testWidgets('renders custom image in AdaptiveScaffold app bar', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdaptiveScaffold(
+            appBar: AdaptiveAppBar(
+              actions: [
+                AdaptiveAppBarAction(image: testImage, onPressed: () {}),
+              ],
+            ),
+            body: const SizedBox.shrink(),
+          ),
+        ),
+      );
+
+      expect(find.byType(Image), findsOneWidget);
     });
   });
 }

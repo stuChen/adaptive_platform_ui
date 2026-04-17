@@ -158,80 +158,26 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
             var items: [UITabBarItem] = []
             for i in range {
                 let title = (i < labels.count) ? labels[i] : nil
+                let symbol = (i < symbols.count && !symbols[i].isEmpty) ? symbols[i] : nil
                 let isSearch = (i < searchFlags.count) && searchFlags[i]
                 let badgeCount = (i < badgeCounts.count) ? badgeCounts[i] : nil
+                let iconAsset = (i < iconAssets.count && !iconAssets[i].isEmpty) ? iconAssets[i] : nil
+                let selectedIconAsset = (i < selectedIconAssets.count && !selectedIconAssets[i].isEmpty) ? selectedIconAssets[i] : nil
+                let assetPackage = (i < assetPackages.count && !assetPackages[i].isEmpty) ? assetPackages[i] : nil
+                let iconPointSize = (i < iconSizes.count ? iconSizes[i] : nil) ?? 24.0
 
-                let item: UITabBarItem
-
-                // Use UITabBarSystemItem.search for search tabs (iOS 26+ Liquid Glass)
-                if isSearch {
-                    if #available(iOS 26.0, *) {
-                        item = UITabBarItem(tabBarSystemItem: .search, tag: i)
-                        if let title = title {
-                            item.title = title
-                        }
-
-                    } else {
-                        // Fallback for older iOS versions
-                        let searchImage = UIImage(systemName: "magnifyingglass")
-                        item = UITabBarItem(title: title, image: searchImage, selectedImage: searchImage)
-                    }
-                } else {
-                    var image: UIImage? = nil
-                    var selectedImage: UIImage? = nil
-                    let iconAsset = (i < iconAssets.count && !iconAssets[i].isEmpty) ? iconAssets[i] : nil
-                    let selectedIconAsset = (i < selectedIconAssets.count && !selectedIconAssets[i].isEmpty) ? selectedIconAssets[i] : nil
-                    let assetPackage = (i < assetPackages.count && !assetPackages[i].isEmpty) ? assetPackages[i] : nil
-                    let iconPointSize = (i < iconSizes.count ? iconSizes[i] : nil) ?? 24.0
-
-                    if let iconAsset = iconAsset {
-                        image = self.loadTabImage(
-                            assetName: iconAsset,
-                            package: assetPackage,
-                            pointSize: iconPointSize
-                        )
-                        let selectedAssetName = selectedIconAsset ?? iconAsset
-                        selectedImage = self.loadTabImage(
-                            assetName: selectedAssetName,
-                            package: assetPackage,
-                            pointSize: iconPointSize
-                        )
-                    } else if i < symbols.count && !symbols[i].isEmpty {
-                        // iOS 26+: Use different rendering modes for selected/unselected
-                        if #available(iOS 26.0, *) {
-                            // Unselected: Only apply custom color if unselectedTint is provided
-                            if let unselTint = unselectedTint {
-                                // Create colored image for unselected state
-                                if let originalImage = UIImage(systemName: symbols[i]) {
-                                    image = originalImage.withTintColor(unselTint, renderingMode: .alwaysOriginal)
-                                }
-                            } else {
-                                // No custom color - use template mode to respect theme
-                                image = UIImage(systemName: symbols[i])?.withRenderingMode(.alwaysTemplate)
-                            }
-
-                            // Selected: Use template rendering so tintColor applies
-                            selectedImage = UIImage(systemName: symbols[i])?.withRenderingMode(.alwaysTemplate)
-                        } else {
-                            // iOS <26: Use default behavior
-                            image = UIImage(systemName: symbols[i])
-                            selectedImage = image
-                        }
-                    }
-
-                    // Create item with title
-                    item = UITabBarItem(title: title ?? "Tab \(i+1)", image: image, selectedImage: selectedImage)
-                    item.tag = i
-                }
-
-                // Set badge value if provided
-                if let count = badgeCount, count > 0 {
-                    item.badgeValue = count > 99 ? "99+" : String(count)
-                } else {
-                    item.badgeValue = nil
-                }
-
-                items.append(item)
+                items.append(self.makeTabBarItem(
+                    title: title,
+                    symbol: symbol,
+                    iconAsset: iconAsset,
+                    selectedIconAsset: selectedIconAsset,
+                    assetPackage: assetPackage,
+                    iconPointSize: iconPointSize,
+                    isSearch: isSearch,
+                    badgeCount: badgeCount,
+                    index: i,
+                    unselectedTint: unselectedTint
+                ))
             }
             return items
         }
@@ -336,82 +282,26 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
                 var items: [UITabBarItem] = []
                 for i in range {
                     let title = (i < labels.count) ? labels[i] : nil
+                    let symbol = (i < symbols.count && !symbols[i].isEmpty) ? symbols[i] : nil
                     let isSearch = (i < searchFlags.count) && searchFlags[i]
                     let badgeCount = (i < badgeCounts.count) ? badgeCounts[i] : nil
+                    let iconAsset = (i < iconAssets.count && !iconAssets[i].isEmpty) ? iconAssets[i] : nil
+                    let selectedIconAsset = (i < selectedIconAssets.count && !selectedIconAssets[i].isEmpty) ? selectedIconAssets[i] : nil
+                    let assetPackage = (i < assetPackages.count && !assetPackages[i].isEmpty) ? assetPackages[i] : nil
+                    let iconPointSize = (i < iconSizes.count ? iconSizes[i] : nil) ?? 24.0
 
-                    let item: UITabBarItem
-
-                    // Use UITabBarSystemItem.search for search tabs (iOS 26+ Liquid Glass)
-                    if isSearch {
-                        if #available(iOS 26.0, *) {
-                            item = UITabBarItem(tabBarSystemItem: .search, tag: i)
-                            if let title = title {
-                                item.title = title
-                            }
-
-                        } else {
-                            // Fallback for older iOS versions
-                            let searchImage = UIImage(systemName: "magnifyingglass")
-                            item = UITabBarItem(title: title, image: searchImage, selectedImage: searchImage)
-                        }
-                    } else {
-                        var image: UIImage? = nil
-                        var selectedImage: UIImage? = nil
-                        let iconAsset = (i < iconAssets.count && !iconAssets[i].isEmpty) ? iconAssets[i] : nil
-                        let selectedIconAsset = (i < selectedIconAssets.count && !selectedIconAssets[i].isEmpty) ? selectedIconAssets[i] : nil
-                        let assetPackage = (i < assetPackages.count && !assetPackages[i].isEmpty) ? assetPackages[i] : nil
-                        let iconPointSize = (i < iconSizes.count ? iconSizes[i] : nil) ?? 24.0
-
-                        if let iconAsset = iconAsset {
-                            image = self.loadTabImage(
-                                assetName: iconAsset,
-                                package: assetPackage,
-                                pointSize: iconPointSize
-                            )
-                            let selectedAssetName = selectedIconAsset ?? iconAsset
-                            selectedImage = self.loadTabImage(
-                                assetName: selectedAssetName,
-                                package: assetPackage,
-                                pointSize: iconPointSize
-                            )
-                        } else if i < symbols.count && !symbols[i].isEmpty {
-                            // iOS 26+: Use different rendering modes for selected/unselected
-                            if #available(iOS 26.0, *) {
-                                // Get current unselected color from tab bar
-                                let unselTint = self.tabBar?.unselectedItemTintColor
-
-                                // Unselected: Only apply custom color if unselectedTint is set
-                                if let unselTint = unselTint {
-                                    if let originalImage = UIImage(systemName: symbols[i]) {
-                                        image = originalImage.withTintColor(unselTint, renderingMode: .alwaysOriginal)
-                                    }
-                                } else {
-                                    // No custom color - use template mode to respect theme
-                                    image = UIImage(systemName: symbols[i])?.withRenderingMode(.alwaysTemplate)
-                                }
-
-                                // Selected: Use template rendering so tintColor applies
-                                selectedImage = UIImage(systemName: symbols[i])?.withRenderingMode(.alwaysTemplate)
-                            } else {
-                                // iOS <26: Use default behavior
-                                image = UIImage(systemName: symbols[i])
-                                selectedImage = image
-                            }
-                        }
-
-                        // Create item with title
-                        item = UITabBarItem(title: title ?? "Tab \(i+1)", image: image, selectedImage: selectedImage)
-                        item.tag = i
-                    }
-
-                    // Set badge value if provided
-                    if let count = badgeCount, count > 0 {
-                        item.badgeValue = count > 99 ? "99+" : String(count)
-                    } else {
-                        item.badgeValue = nil
-                    }
-
-                    items.append(item)
+                    items.append(self.makeTabBarItem(
+                        title: title,
+                        symbol: symbol,
+                        iconAsset: iconAsset,
+                        selectedIconAsset: selectedIconAsset,
+                        assetPackage: assetPackage,
+                        iconPointSize: iconPointSize,
+                        isSearch: isSearch,
+                        badgeCount: badgeCount,
+                        index: i,
+                        unselectedTint: self.tabBar?.unselectedItemTintColor
+                    ))
                 }
                 return items
             }
@@ -544,68 +434,26 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
         var items: [UITabBarItem] = []
         for i in 0..<currentLabels.count {
             let title = currentLabels[i]
+            let symbol = (i < currentSymbols.count && !currentSymbols[i].isEmpty) ? currentSymbols[i] : nil
             let isSearch = (i < currentSearchFlags.count) && currentSearchFlags[i]
             let badgeCount = (i < currentBadgeCounts.count) ? currentBadgeCounts[i] : nil
+            let iconAsset = (i < currentIconAssets.count && !currentIconAssets[i].isEmpty) ? currentIconAssets[i] : nil
+            let selectedIconAsset = (i < currentSelectedIconAssets.count && !currentSelectedIconAssets[i].isEmpty) ? currentSelectedIconAssets[i] : nil
+            let assetPackage = (i < currentAssetPackages.count && !currentAssetPackages[i].isEmpty) ? currentAssetPackages[i] : nil
+            let iconPointSize = (i < currentIconSizes.count ? currentIconSizes[i] : nil) ?? 24.0
 
-            let item: UITabBarItem
-
-            if isSearch {
-                if #available(iOS 26.0, *) {
-                    item = UITabBarItem(tabBarSystemItem: .search, tag: i)
-                    item.title = title
-                } else {
-                    let searchImage = UIImage(systemName: "magnifyingglass")
-                    item = UITabBarItem(title: title, image: searchImage, selectedImage: searchImage)
-                }
-            } else {
-                var image: UIImage? = nil
-                var selectedImage: UIImage? = nil
-                let iconAsset = (i < currentIconAssets.count && !currentIconAssets[i].isEmpty) ? currentIconAssets[i] : nil
-                let selectedIconAsset = (i < currentSelectedIconAssets.count && !currentSelectedIconAssets[i].isEmpty) ? currentSelectedIconAssets[i] : nil
-                let assetPackage = (i < currentAssetPackages.count && !currentAssetPackages[i].isEmpty) ? currentAssetPackages[i] : nil
-                let iconPointSize = (i < currentIconSizes.count ? currentIconSizes[i] : nil) ?? 24.0
-
-                if let iconAsset = iconAsset {
-                    image = loadTabImage(
-                        assetName: iconAsset,
-                        package: assetPackage,
-                        pointSize: iconPointSize
-                    )
-                    let selectedAssetName = selectedIconAsset ?? iconAsset
-                    selectedImage = loadTabImage(
-                        assetName: selectedAssetName,
-                        package: assetPackage,
-                        pointSize: iconPointSize
-                    )
-                } else if i < currentSymbols.count && !currentSymbols[i].isEmpty {
-                    if #available(iOS 26.0, *) {
-                        // Unselected: Only apply custom color if unselectedTint is set
-                        if let unselTint = unselTint {
-                            if let originalImage = UIImage(systemName: currentSymbols[i]) {
-                                image = originalImage.withTintColor(unselTint, renderingMode: .alwaysOriginal)
-                            }
-                        } else {
-                            // No custom color - use template mode to respect theme
-                            image = UIImage(systemName: currentSymbols[i])?.withRenderingMode(.alwaysTemplate)
-                        }
-                        // Selected: Use template rendering so tintColor applies
-                        selectedImage = UIImage(systemName: currentSymbols[i])?.withRenderingMode(.alwaysTemplate)
-                    } else {
-                        image = UIImage(systemName: currentSymbols[i])
-                        selectedImage = image
-                    }
-                }
-
-                item = UITabBarItem(title: title, image: image, selectedImage: selectedImage)
-                item.tag = i
-            }
-
-            // Set badge value if provided
-            if let count = badgeCount, count > 0 {
-                item.badgeValue = count > 99 ? "99+" : String(count)
-            }
-
-            items.append(item)
+            items.append(makeTabBarItem(
+                title: title,
+                symbol: symbol,
+                iconAsset: iconAsset,
+                selectedIconAsset: selectedIconAsset,
+                assetPackage: assetPackage,
+                iconPointSize: iconPointSize,
+                isSearch: isSearch,
+                badgeCount: badgeCount,
+                index: i,
+                unselectedTint: unselTint
+            ))
         }
 
         bar.items = items
@@ -672,6 +520,98 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
             y: (targetSize.height - size.height) / 2
         )
         return CGRect(origin: origin, size: size)
+    }
+
+    private func makeTabBarItem(
+        title: String?,
+        symbol: String?,
+        iconAsset: String?,
+        selectedIconAsset: String?,
+        assetPackage: String?,
+        iconPointSize: Double,
+        isSearch: Bool,
+        badgeCount: Int?,
+        index: Int,
+        unselectedTint: UIColor?
+    ) -> UITabBarItem {
+        func resolveCustomImages() -> (UIImage?, UIImage?) {
+            var image: UIImage? = nil
+            var selectedImage: UIImage? = nil
+
+            if let iconAsset = iconAsset, !iconAsset.isEmpty {
+                image = loadTabImage(
+                    assetName: iconAsset,
+                    package: assetPackage,
+                    pointSize: iconPointSize
+                )
+                let selectedAssetName = (selectedIconAsset?.isEmpty == false)
+                    ? selectedIconAsset
+                    : iconAsset
+                if let selectedAssetName {
+                    selectedImage = loadTabImage(
+                        assetName: selectedAssetName,
+                        package: assetPackage,
+                        pointSize: iconPointSize
+                    )
+                }
+            } else if let symbol, !symbol.isEmpty {
+                if #available(iOS 26.0, *) {
+                    if let unselectedTint,
+                       let originalImage = UIImage(systemName: symbol) {
+                        image = originalImage.withTintColor(unselectedTint, renderingMode: .alwaysOriginal)
+                    } else {
+                        image = UIImage(systemName: symbol)?.withRenderingMode(.alwaysTemplate)
+                    }
+                    selectedImage = UIImage(systemName: symbol)?.withRenderingMode(.alwaysTemplate)
+                } else {
+                    image = UIImage(systemName: symbol)
+                    selectedImage = image
+                }
+            }
+
+            return (image, selectedImage)
+        }
+
+        if isSearch, #available(iOS 26.0, *) {
+            let item = UITabBarItem(tabBarSystemItem: .search, tag: index)
+            if let title {
+                item.title = title
+            }
+
+            let (image, selectedImage) = resolveCustomImages()
+            if image != nil || selectedImage != nil {
+                item.image = image
+                item.selectedImage = selectedImage ?? image
+            }
+
+            if let badgeCount, badgeCount > 0 {
+                item.badgeValue = badgeCount > 99 ? "99+" : String(badgeCount)
+            }
+            return item
+        }
+
+        let (image, selectedImage) = resolveCustomImages()
+
+        if image == nil && selectedImage == nil && isSearch {
+            let searchImage = UIImage(systemName: "magnifyingglass")
+            let item = UITabBarItem(title: title, image: searchImage, selectedImage: searchImage)
+            item.tag = index
+            if let badgeCount, badgeCount > 0 {
+                item.badgeValue = badgeCount > 99 ? "99+" : String(badgeCount)
+            }
+            return item
+        }
+
+        let item = UITabBarItem(
+            title: title ?? "Tab \(index + 1)",
+            image: image,
+            selectedImage: selectedImage
+        )
+        item.tag = index
+        if let badgeCount, badgeCount > 0 {
+            item.badgeValue = badgeCount > 99 ? "99+" : String(badgeCount)
+        }
+        return item
     }
 }
 

@@ -648,7 +648,7 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
     private func resizedImage(_ image: UIImage, pointSize: Double) -> UIImage {
         let targetSize = CGSize(width: pointSize, height: pointSize)
         let format = UIGraphicsImageRendererFormat.default()
-        format.scale = image.scale
+        format.scale = UIScreen.main.scale
         format.opaque = false
 
         let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)

@@ -22,6 +22,8 @@ class AdaptiveSegmentedControl extends StatelessWidget {
     this.sfSymbols,
     this.iconSize,
     this.iconColor,
+    this.textStyle,
+    this.selectedTextStyle,
   });
 
   /// Segment labels to display, in order
@@ -54,6 +56,12 @@ class AdaptiveSegmentedControl extends StatelessWidget {
   /// Icon color
   final Color? iconColor;
 
+  /// Text style for unselected labels
+  final TextStyle? textStyle;
+
+  /// Text style for the selected label
+  final TextStyle? selectedTextStyle;
+
   @override
   Widget build(BuildContext context) {
     // iOS 26+ - Use native iOS 26 segmented control
@@ -69,6 +77,8 @@ class AdaptiveSegmentedControl extends StatelessWidget {
         icons: sfSymbols,
         iconSize: iconSize,
         iconColor: iconColor,
+        textStyle: textStyle,
+        selectedTextStyle: selectedTextStyle,
       );
     }
 
@@ -110,7 +120,7 @@ class AdaptiveSegmentedControl extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Text(
             labels[i],
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            style: _resolveTextStyle(selected: i == selectedIndex),
           ),
         );
       }
@@ -159,7 +169,7 @@ class AdaptiveSegmentedControl extends StatelessWidget {
             value: i,
             label: Text(
               labels[i],
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              style: _resolveTextStyle(selected: i == selectedIndex),
             ),
           ),
         );
@@ -187,5 +197,11 @@ class AdaptiveSegmentedControl extends StatelessWidget {
     }
 
     return control;
+  }
+
+  TextStyle _resolveTextStyle({required bool selected}) {
+    const baseStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w500);
+    final defaultStyle = baseStyle.merge(textStyle);
+    return selected ? defaultStyle.merge(selectedTextStyle) : defaultStyle;
   }
 }

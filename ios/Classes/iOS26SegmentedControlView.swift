@@ -110,6 +110,13 @@ class iOS26SegmentedControlView: NSObject, FlutterPlatformView {
                 for (index, label) in labels.enumerated() {
                     segmentedControl.insertSegment(withTitle: label, at: index, animated: false)
                 }
+
+                if let textStyle = config["textStyle"] as? [String: Any] {
+                    applyTextStyle(textStyle, for: .normal)
+                }
+                if let selectedTextStyle = config["selectedTextStyle"] as? [String: Any] {
+                    applyTextStyle(selectedTextStyle, for: .selected)
+                }
             }
 
             // Set enabled state
@@ -153,6 +160,79 @@ class iOS26SegmentedControlView: NSObject, FlutterPlatformView {
         let g = CGFloat((argb >> 8) & 0xFF) / 255.0
         let b = CGFloat(argb & 0xFF) / 255.0
         return UIColor(red: r, green: g, blue: b, alpha: a)
+    }
+
+    private func applyTextStyle(_ config: [String: Any], for state: UIControl.State) {
+        var attributes: [NSAttributedString.Key: Any] = [:]
+
+        if let colorValue = config["color"] as? Int {
+            attributes[.foregroundColor] = colorFromARGB(colorValue)
+        }
+
+        if let font = fontFromTextStyle(config) {
+            attributes[.font] = font
+        }
+
+        if let letterSpacing = config["letterSpacing"] as? NSNumber {
+            attributes[.kern] = CGFloat(letterSpacing.doubleValue)
+        }
+
+        if !attributes.isEmpty {
+            segmentedControl.setTitleTextAttributes(attributes, for: state)
+        }
+    }
+
+    private func fontFromTextStyle(_ config: [String: Any]) -> UIFont? {
+        let hasFontOverride =
+            config["fontSize"] != nil ||
+            config["fontWeight"] != nil ||
+            config["fontFamily"] != nil ||
+            config["fontStyle"] != nil
+
+        guard hasFontOverride else { return nil }
+
+        let fontSize = CGFloat((config["fontSize"] as? NSNumber)?.doubleValue ?? 13.0)
+        let fontWeight = uiFontWeight(from: config["fontWeight"] as? Int)
+        let fontFamily = config["fontFamily"] as? String
+        let isItalic = (config["fontStyle"] as? String) == "italic"
+
+        let baseFont: UIFont
+        if let fontFamily, let customFont = UIFont(name: fontFamily, size: fontSize) {
+            baseFont = customFont
+        } else {
+            baseFont = UIFont.systemFont(ofSize: fontSize, weight: fontWeight)
+        }
+
+        guard isItalic else { return baseFont }
+
+        if let descriptor = baseFont.fontDescriptor.withSymbolicTraits(.traitItalic) {
+            return UIFont(descriptor: descriptor, size: fontSize)
+        }
+
+        return baseFont
+    }
+
+    private func uiFontWeight(from value: Int?) -> UIFont.Weight {
+        switch value ?? 400 {
+        case ..<150:
+            return .ultraLight
+        case ..<250:
+            return .thin
+        case ..<350:
+            return .light
+        case ..<450:
+            return .regular
+        case ..<550:
+            return .medium
+        case ..<650:
+            return .semibold
+        case ..<750:
+            return .bold
+        case ..<850:
+            return .heavy
+        default:
+            return .black
+        }
     }
 
     @objc private func segmentChanged() {

@@ -366,6 +366,14 @@ AdaptiveSegmentedControl(
   onValueChanged: (index) {
     print('Selected: $index');
   },
+  textStyle: TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+  ),
+  selectedTextStyle: TextStyle(
+    color: CupertinoColors.white,
+    fontWeight: FontWeight.w700,
+  ),
 )
 
 // With icons (SF Symbols on iOS)

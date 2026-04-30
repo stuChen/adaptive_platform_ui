@@ -12,44 +12,22 @@ import 'ios26/ios26_scaffold.dart';
 /// Navigation destination for bottom navigation
 class AdaptiveNavigationDestination {
   const AdaptiveNavigationDestination({
-    this.icon,
+    required this.icon,
     required this.label,
     this.selectedIcon,
-    this.iconAsset,
-    this.selectedIconAsset,
-    this.assetPackage,
-    this.iconSize,
     this.isSearch = false,
     this.badgeCount,
     this.addSpacerAfter = false,
-  }) : assert(
-         icon != null || iconAsset != null,
-         'Either icon or iconAsset must be provided.',
-       );
+  });
 
   /// Icon to display (SF Symbol name for iOS, IconData for cross-platform)
-  final Object? icon;
+  final dynamic icon;
 
   /// Label text for the destination
   final String label;
 
   /// Optional selected state icon
-  final Object? selectedIcon;
-
-  /// Asset image for the icon.
-  /// When provided, this is rendered instead of [icon].
-  final String? iconAsset;
-
-  /// Optional asset image for the selected state.
-  /// Falls back to [iconAsset] when omitted.
-  final String? selectedIconAsset;
-
-  /// Optional package name used to resolve [iconAsset] and [selectedIconAsset].
-  final String? assetPackage;
-
-  /// Optional size used for custom asset icons.
-  /// Defaults to `24.0` when omitted.
-  final double? iconSize;
+  final dynamic selectedIcon;
 
   /// Whether this is a search tab (iOS 26+)
   /// Search tabs are visually separated and transform into a search field
@@ -314,12 +292,18 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
                     children: widget.appBar!.actions!.map((action) {
+                      Widget actionChild;
+                      if (action.title != null) {
+                        actionChild = Text(action.title!);
+                      } else if (action.icon != null) {
+                        actionChild = Icon(action.icon!);
+                      } else {
+                        actionChild = const Icon(CupertinoIcons.circle);
+                      }
                       return CupertinoButton(
                         padding: EdgeInsets.zero,
                         onPressed: action.onPressed,
-                        child: action.buildContent(
-                          fallbackIcon: CupertinoIcons.circle,
-                        ),
+                        child: actionChild,
                       );
                     }).toList(),
                   )
@@ -362,30 +346,41 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               onTap: widget.bottomNavigationBar!.onTap!,
               activeColor: widget.bottomNavigationBar!.selectedItemColor,
               items: widget.bottomNavigationBar!.items!.map((dest) {
-                // Wrap icons with badge if badgeCount is provided
-                Widget iconWidget = _buildCupertinoDestinationIcon(
-                  dest,
-                  color: unselectedColor,
-                );
-                Widget activeIconWidget = _buildCupertinoDestinationIcon(
-                  dest,
-                  isSelected: true,
-                );
+                // Determine icon widget
+                Widget iconWidget;
+                if (dest.icon is Widget) {
+                  iconWidget = unselectedColor != null && dest.icon is ImageIcon
+                      ? ImageIcon((dest.icon as ImageIcon).image, color: unselectedColor)
+                      : (dest.icon as Widget);
+                } else {
+                  final IconData iconData = dest.icon is String
+                      ? _sfSymbolToCupertinoIcon(dest.icon as String)
+                      : dest.icon as IconData;
+                  iconWidget = unselectedColor != null
+                      ? Icon(iconData, color: unselectedColor)
+                      : Icon(iconData);
+                }
+
+                // Determine selected icon widget
+                Widget activeIconWidget;
+                final selectedIconRaw = dest.selectedIcon ?? dest.icon;
+                if (selectedIconRaw is Widget) {
+                  activeIconWidget = selectedIconRaw;
+                } else {
+                  final IconData iconData = selectedIconRaw is String
+                      ? _sfSymbolToCupertinoIcon(selectedIconRaw)
+                      : selectedIconRaw as IconData;
+                  activeIconWidget = Icon(iconData);
+                }
 
                 if (dest.badgeCount != null && dest.badgeCount! > 0) {
                   iconWidget = AdaptiveBadge(
                     count: dest.badgeCount,
-                    child: _buildCupertinoDestinationIcon(
-                      dest,
-                      color: unselectedColor,
-                    ),
+                    child: iconWidget,
                   );
                   activeIconWidget = AdaptiveBadge(
                     count: dest.badgeCount,
-                    child: _buildCupertinoDestinationIcon(
-                      dest,
-                      isSelected: true,
-                    ),
+                    child: activeIconWidget,
                   );
                 }
 
@@ -511,12 +506,18 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               ? Row(
                   mainAxisSize: MainAxisSize.min,
                   children: widget.appBar!.actions!.map((action) {
+                    Widget actionChild;
+                    if (action.title != null) {
+                      actionChild = Text(action.title!);
+                    } else if (action.icon != null) {
+                      actionChild = Icon(action.icon!);
+                    } else {
+                      actionChild = const Icon(CupertinoIcons.circle);
+                    }
                     return CupertinoButton(
                       padding: EdgeInsets.zero,
                       onPressed: action.onPressed,
-                      child: action.buildContent(
-                        fallbackIcon: CupertinoIcons.circle,
-                      ),
+                      child: actionChild,
                     );
                   }).toList(),
                 )
@@ -592,7 +593,9 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               );
             }
             return IconButton(
-              icon: action.buildContent(fallbackIcon: Icons.circle),
+              icon: action.icon != null
+                  ? Icon(action.icon!)
+                  : const Icon(Icons.circle),
               onPressed: action.onPressed,
             );
           }).toList(),
@@ -614,21 +617,31 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
           onDestinationSelected: widget.bottomNavigationBar!.onTap!,
           indicatorColor: widget.bottomNavigationBar!.selectedItemColor,
           destinations: widget.bottomNavigationBar!.items!.map((dest) {
-            // Wrap icons with badge if badgeCount is provided
-            Widget iconWidget = _buildMaterialDestinationIcon(dest);
-            Widget selectedIconWidget = _buildMaterialDestinationIcon(
-              dest,
-              isSelected: true,
-            );
+            Widget iconWidget;
+            if (dest.icon is Widget) {
+              iconWidget = dest.icon as Widget;
+            } else {
+              final IconData iconData = dest.icon is String ? Icons.circle : dest.icon as IconData;
+              iconWidget = Icon(iconData);
+            }
+
+            Widget selectedIconWidget;
+            final selectedIconRaw = dest.selectedIcon ?? dest.icon;
+            if (selectedIconRaw is Widget) {
+              selectedIconWidget = selectedIconRaw;
+            } else {
+              final IconData iconData = selectedIconRaw is String ? Icons.circle : selectedIconRaw as IconData;
+              selectedIconWidget = Icon(iconData);
+            }
 
             if (dest.badgeCount != null && dest.badgeCount! > 0) {
               iconWidget = AdaptiveBadge(
                 count: dest.badgeCount,
-                child: _buildMaterialDestinationIcon(dest),
+                child: iconWidget,
               );
               selectedIconWidget = AdaptiveBadge(
                 count: dest.badgeCount,
-                child: _buildMaterialDestinationIcon(dest, isSelected: true),
+                child: selectedIconWidget,
               );
             }
 
@@ -681,7 +694,9 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
             );
           }
           return IconButton(
-            icon: action.buildContent(fallbackIcon: Icons.circle),
+            icon: action.icon != null
+                ? Icon(action.icon!)
+                : const Icon(Icons.circle),
             onPressed: action.onPressed,
           );
         }).toList(),
@@ -732,77 +747,6 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       'checkmark.circle': CupertinoIcons.checkmark_circle,
     };
     return iconMap[sfSymbol] ?? CupertinoIcons.circle;
-  }
-
-  Widget _buildCupertinoDestinationIcon(
-    AdaptiveNavigationDestination destination, {
-    bool isSelected = false,
-    Color? color,
-  }) {
-    final assetPath = _resolveDestinationAsset(
-      destination,
-      isSelected: isSelected,
-    );
-    if (assetPath != null) {
-      return _buildDestinationAssetImage(destination, assetPath);
-    }
-
-    final icon = _resolveDestinationIcon(destination, isSelected: isSelected);
-    final iconData = icon is String
-        ? _sfSymbolToCupertinoIcon(icon)
-        : (icon as IconData? ?? CupertinoIcons.circle);
-    return color != null ? Icon(iconData, color: color) : Icon(iconData);
-  }
-
-  Widget _buildMaterialDestinationIcon(
-    AdaptiveNavigationDestination destination, {
-    bool isSelected = false,
-  }) {
-    final assetPath = _resolveDestinationAsset(
-      destination,
-      isSelected: isSelected,
-    );
-    if (assetPath != null) {
-      return _buildDestinationAssetImage(destination, assetPath);
-    }
-
-    final icon = _resolveDestinationIcon(destination, isSelected: isSelected);
-    final iconData = icon is IconData ? icon : Icons.circle;
-    return Icon(iconData);
-  }
-
-  Widget _buildDestinationAssetImage(
-    AdaptiveNavigationDestination destination,
-    String assetPath,
-  ) {
-    final dimension = destination.iconSize ?? 24.0;
-    return Image.asset(
-      assetPath,
-      package: destination.assetPackage,
-      width: dimension,
-      height: dimension,
-      fit: BoxFit.contain,
-    );
-  }
-
-  String? _resolveDestinationAsset(
-    AdaptiveNavigationDestination destination, {
-    required bool isSelected,
-  }) {
-    if (isSelected && destination.selectedIconAsset != null) {
-      return destination.selectedIconAsset;
-    }
-    return destination.iconAsset;
-  }
-
-  Object? _resolveDestinationIcon(
-    AdaptiveNavigationDestination destination, {
-    required bool isSelected,
-  }) {
-    if (isSelected && destination.selectedIcon != null) {
-      return destination.selectedIcon;
-    }
-    return destination.icon;
   }
 }
 

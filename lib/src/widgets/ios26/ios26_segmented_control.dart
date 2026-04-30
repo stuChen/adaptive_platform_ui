@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// Native iOS 26 segmented control implementation using platform views
@@ -18,8 +19,6 @@ class IOS26SegmentedControl extends StatefulWidget {
     this.icons,
     this.iconSize,
     this.iconColor,
-    this.textStyle,
-    this.selectedTextStyle,
   });
 
   /// Segment labels to display, in order
@@ -52,12 +51,6 @@ class IOS26SegmentedControl extends StatefulWidget {
   /// Icon color (when using icons)
   final Color? iconColor;
 
-  /// Text style for unselected labels
-  final TextStyle? textStyle;
-
-  /// Text style for the selected label
-  final TextStyle? selectedTextStyle;
-
   @override
   State<IOS26SegmentedControl> createState() => _IOS26SegmentedControlState();
 }
@@ -67,6 +60,7 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
   late final int _id;
   late final MethodChannel _channel;
   bool? _lastIsDark;
+  int? _lastTextColor;
 
   @override
   void initState() {
@@ -81,7 +75,7 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _syncBrightnessIfNeeded();
+    _syncThemeIfNeeded();
   }
 
   @override
@@ -90,12 +84,24 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
     super.dispose();
   }
 
-  Future<void> _syncBrightnessIfNeeded() async {
-    final isDark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
-    if (_lastIsDark != isDark) {
+  Brightness _effectiveBrightness() {
+    return CupertinoTheme.of(context).brightness ??
+        Theme.of(context).brightness;
+  }
+
+  Future<void> _syncThemeIfNeeded() async {
+    final isDark = _effectiveBrightness() == Brightness.dark;
+    final themeParams = _buildThemeParams();
+    final textColor = themeParams['textColor'] as int;
+
+    if (_lastIsDark != isDark || _lastTextColor != textColor) {
       try {
-        await _channel.invokeMethod('setBrightness', {'isDark': isDark});
+        await _channel.invokeMethod('setBrightness', {
+          'isDark': isDark,
+          ...themeParams,
+        });
         _lastIsDark = isDark;
+        _lastTextColor = textColor;
       } catch (e) {
         // Ignore errors if platform view is not yet ready
       }
@@ -133,61 +139,25 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
         ((color.b * 255.0).round() & 0xff);
   }
 
-  int _fontWeightToNumeric(FontWeight fontWeight) {
-    switch (fontWeight) {
-      case FontWeight.w100:
-        return 100;
-      case FontWeight.w200:
-        return 200;
-      case FontWeight.w300:
-        return 300;
-      case FontWeight.w400:
-        return 400;
-      case FontWeight.w500:
-        return 500;
-      case FontWeight.w600:
-        return 600;
-      case FontWeight.w700:
-        return 700;
-      case FontWeight.w800:
-        return 800;
-      case FontWeight.w900:
-        return 900;
-      default:
-        return 400;
-    }
-  }
+  Map<String, dynamic> _buildThemeParams() {
+    final cupertinoTheme = CupertinoTheme.of(context);
+    final brightness = _effectiveBrightness();
 
-  Map<String, dynamic> _textStyleToMap(TextStyle style) {
-    final map = <String, dynamic>{};
+    final baseTextStyle = DefaultTextStyle.of(context).style;
+    final themeTextStyle = cupertinoTheme.textTheme.textStyle;
 
-    if (style.color != null) {
-      map['color'] = _colorToARGB(style.color!);
-    }
-    if (style.fontSize != null) {
-      map['fontSize'] = style.fontSize!;
-    }
-    if (style.fontWeight != null) {
-      map['fontWeight'] = _fontWeightToNumeric(style.fontWeight!);
-    }
-    if (style.fontFamily != null) {
-      map['fontFamily'] = style.fontFamily!;
-    }
-    if (style.fontStyle != null) {
-      map['fontStyle'] = style.fontStyle == FontStyle.italic
-          ? 'italic'
-          : 'normal';
-    }
-    if (style.letterSpacing != null) {
-      map['letterSpacing'] = style.letterSpacing!;
-    }
+    final effectiveTextColor =
+        baseTextStyle.color ??
+        themeTextStyle.color ??
+        (brightness == Brightness.dark
+            ? CupertinoColors.white
+            : CupertinoColors.black);
 
-    return map;
+    return <String, dynamic>{'textColor': _colorToARGB(effectiveTextColor)};
   }
 
   Map<String, dynamic> _buildCreationParams() {
-    final bool isDark =
-        MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    final bool isDark = _effectiveBrightness() == Brightness.dark;
 
     final params = <String, dynamic>{
       'id': _id,
@@ -195,6 +165,7 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
       'selectedIndex': widget.selectedIndex,
       'enabled': widget.enabled,
       'isDark': isDark,
+      ..._buildThemeParams(),
     };
 
     // Add SF symbols if provided
@@ -215,17 +186,6 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
     // Add icon color if provided
     if (widget.iconColor != null) {
       params['iconColor'] = _colorToARGB(widget.iconColor!);
-    }
-
-    if (widget.textStyle != null) {
-      params['textStyle'] = _textStyleToMap(widget.textStyle!);
-    }
-
-    final effectiveSelectedTextStyle =
-        widget.textStyle?.merge(widget.selectedTextStyle) ??
-        widget.selectedTextStyle;
-    if (effectiveSelectedTextStyle != null) {
-      params['selectedTextStyle'] = _textStyleToMap(effectiveSelectedTextStyle);
     }
 
     return params;
@@ -265,7 +225,7 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Text(
           widget.labels[i],
-          style: _resolveTextStyle(selected: i == widget.selectedIndex),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
         ),
       );
     }
@@ -281,13 +241,5 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
     }
 
     return SizedBox(height: widget.height, child: control);
-  }
-
-  TextStyle _resolveTextStyle({required bool selected}) {
-    const baseStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w500);
-    final defaultStyle = baseStyle.merge(widget.textStyle);
-    return selected
-        ? defaultStyle.merge(widget.selectedTextStyle)
-        : defaultStyle;
   }
 }

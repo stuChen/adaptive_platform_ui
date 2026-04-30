@@ -128,13 +128,13 @@ class iOS26ButtonView: NSObject, FlutterPlatformView {
         // Setup constraints
         _view.addSubview(button)
 
-        // Button should fill container width
+        // Let Flutter own the platform view's height. Adding a required native
+        // height here conflicts when UIKit receives a fractional Flutter size.
         NSLayoutConstraint.activate([
             button.leadingAnchor.constraint(equalTo: _view.leadingAnchor),
             button.trailingAnchor.constraint(equalTo: _view.trailingAnchor),
             button.topAnchor.constraint(equalTo: _view.topAnchor),
-            button.bottomAnchor.constraint(equalTo: _view.bottomAnchor),
-            button.heightAnchor.constraint(equalToConstant: getHeightForSize())
+            button.bottomAnchor.constraint(equalTo: _view.bottomAnchor)
         ])
 
         // Low content hugging - button can expand if container wants

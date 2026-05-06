@@ -19,6 +19,8 @@ class IOS26SegmentedControl extends StatefulWidget {
     this.icons,
     this.iconSize,
     this.iconColor,
+    this.textStyle,
+    this.selectedTextStyle,
   });
 
   /// Segment labels to display, in order
@@ -50,6 +52,12 @@ class IOS26SegmentedControl extends StatefulWidget {
 
   /// Icon color (when using icons)
   final Color? iconColor;
+
+  /// Text style for unselected labels.
+  final TextStyle? textStyle;
+
+  /// Text style for the selected label.
+  final TextStyle? selectedTextStyle;
 
   @override
   State<IOS26SegmentedControl> createState() => _IOS26SegmentedControlState();
@@ -153,7 +161,38 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
             ? CupertinoColors.white
             : CupertinoColors.black);
 
-    return <String, dynamic>{'textColor': _colorToARGB(effectiveTextColor)};
+    final effectiveTextStyle = TextStyle(
+      color: effectiveTextColor,
+    ).merge(widget.textStyle);
+    final effectiveSelectedTextStyle = effectiveTextStyle.merge(
+      widget.selectedTextStyle,
+    );
+
+    final params = <String, dynamic>{
+      'textColor': _colorToARGB(effectiveTextStyle.color ?? effectiveTextColor),
+    };
+
+    if (effectiveTextStyle.fontSize != null) {
+      params['fontSize'] = effectiveTextStyle.fontSize!;
+    }
+    if (effectiveTextStyle.fontWeight != null) {
+      params['fontWeight'] = effectiveTextStyle.fontWeight!.index;
+    }
+
+    if (effectiveSelectedTextStyle.color != null) {
+      params['selectedTextColor'] = _colorToARGB(
+        effectiveSelectedTextStyle.color!,
+      );
+    }
+    if (effectiveSelectedTextStyle.fontSize != null) {
+      params['selectedFontSize'] = effectiveSelectedTextStyle.fontSize!;
+    }
+    if (effectiveSelectedTextStyle.fontWeight != null) {
+      params['selectedFontWeight'] =
+          effectiveSelectedTextStyle.fontWeight!.index;
+    }
+
+    return params;
   }
 
   Map<String, dynamic> _buildCreationParams() {

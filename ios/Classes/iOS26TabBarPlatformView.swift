@@ -4,6 +4,7 @@ import UIKit
 class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
     private let channel: FlutterMethodChannel
     private let container: UIView
+    private let assetKeyResolver: (String, String?) -> String
     private var tabBar: UITabBar?
     private var minimizeBehavior: Int = 3 // automatic
     private var currentLabels: [String] = []
@@ -13,12 +14,19 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
     private var currentSearchFlags: [Bool] = []
     private var currentBadgeCounts: [Int?] = []
 
-    init(frame: CGRect, viewId: Int64, args: Any?, messenger: FlutterBinaryMessenger) {
+    init(
+        frame: CGRect,
+        viewId: Int64,
+        args: Any?,
+        messenger: FlutterBinaryMessenger,
+        assetKeyResolver: @escaping (String, String?) -> String
+    ) {
         self.channel = FlutterMethodChannel(
             name: "adaptive_platform_ui/ios26_tab_bar_\(viewId)",
             binaryMessenger: messenger
         )
         self.container = UIView(frame: frame)
+        self.assetKeyResolver = assetKeyResolver
 
         var labels: [String] = []
         var symbols: [String] = []
@@ -170,13 +178,13 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
 
                     if i < assetIcons.count && !assetIcons[i].isEmpty {
                         let assetName = assetIcons[i]
-                        let key = FlutterDartProject.lookupKey(forAsset: assetName)
+                        let key = self.assetKeyResolver(assetName, nil)
                         let rawImageOriginal = UIImage(named: key)
                         let rawImage = rawImageOriginal != nil ? self.resizeImage(image: rawImageOriginal!) : nil
                         
                         var selRawImage = rawImage
                         if i < selectedAssetIcons.count && !selectedAssetIcons[i].isEmpty {
-                            let selKey = FlutterDartProject.lookupKey(forAsset: selectedAssetIcons[i])
+                            let selKey = self.assetKeyResolver(selectedAssetIcons[i], nil)
                             let selRawOriginal = UIImage(named: selKey)
                             if selRawOriginal != nil {
                                 selRawImage = self.resizeImage(image: selRawOriginal!)
@@ -350,13 +358,13 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
 
                         if i < assetIcons.count && !assetIcons[i].isEmpty {
                             let assetName = assetIcons[i]
-                            let key = FlutterDartProject.lookupKey(forAsset: assetName)
+                            let key = self.assetKeyResolver(assetName, nil)
                             let rawImageOriginal = UIImage(named: key)
                             let rawImage = rawImageOriginal != nil ? self.resizeImage(image: rawImageOriginal!) : nil
                             
                             var selRawImage = rawImage
                             if i < selectedAssetIcons.count && !selectedAssetIcons[i].isEmpty {
-                                let selKey = FlutterDartProject.lookupKey(forAsset: selectedAssetIcons[i])
+                                let selKey = self.assetKeyResolver(selectedAssetIcons[i], nil)
                                 let selRawOriginal = UIImage(named: selKey)
                                 if selRawOriginal != nil {
                                     selRawImage = self.resizeImage(image: selRawOriginal!)
@@ -576,13 +584,13 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
 
                 if i < currentAssetIcons.count && !currentAssetIcons[i].isEmpty {
                     if #available(iOS 26.0, *) {
-                        let key = FlutterDartProject.lookupKey(forAsset: currentAssetIcons[i])
+                        let key = self.assetKeyResolver(currentAssetIcons[i], nil)
                         let rawImageOriginal = UIImage(named: key)
                         let rawImage = rawImageOriginal != nil ? self.resizeImage(image: rawImageOriginal!) : nil
                         
                         var selRawImage = rawImage
                         if i < currentSelectedAssetIcons.count && !currentSelectedAssetIcons[i].isEmpty {
-                            let selKey = FlutterDartProject.lookupKey(forAsset: currentSelectedAssetIcons[i])
+                            let selKey = self.assetKeyResolver(currentSelectedAssetIcons[i], nil)
                             let selRawOriginal = UIImage(named: selKey)
                             if selRawOriginal != nil {
                                 selRawImage = self.resizeImage(image: selRawOriginal!)
@@ -596,12 +604,12 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
                         }
                         selectedImage = selRawImage?.withRenderingMode(.alwaysTemplate)
                     } else {
-                        let key = FlutterDartProject.lookupKey(forAsset: currentAssetIcons[i])
+                        let key = self.assetKeyResolver(currentAssetIcons[i], nil)
                         let rawImageOriginal = UIImage(named: key)
                         image = rawImageOriginal != nil ? self.resizeImage(image: rawImageOriginal!) : nil
                         
                         if i < currentSelectedAssetIcons.count && !currentSelectedAssetIcons[i].isEmpty {
-                            let selKey = FlutterDartProject.lookupKey(forAsset: currentSelectedAssetIcons[i])
+                            let selKey = self.assetKeyResolver(currentSelectedAssetIcons[i], nil)
                             let selRawOriginal = UIImage(named: selKey)
                             if selRawOriginal != nil {
                                 selectedImage = self.resizeImage(image: selRawOriginal!)
@@ -697,9 +705,14 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
 
 class iOS26TabBarViewFactory: NSObject, FlutterPlatformViewFactory {
     private let messenger: FlutterBinaryMessenger
+    private let assetKeyResolver: (String, String?) -> String
 
-    init(messenger: FlutterBinaryMessenger) {
+    init(
+        messenger: FlutterBinaryMessenger,
+        assetKeyResolver: @escaping (String, String?) -> String
+    ) {
         self.messenger = messenger
+        self.assetKeyResolver = assetKeyResolver
         super.init()
     }
 
@@ -712,7 +725,8 @@ class iOS26TabBarViewFactory: NSObject, FlutterPlatformViewFactory {
             frame: frame,
             viewId: viewId,
             args: args,
-            messenger: messenger
+            messenger: messenger,
+            assetKeyResolver: assetKeyResolver
         )
     }
 

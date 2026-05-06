@@ -36,6 +36,11 @@ class iOS26SegmentedControlView: NSObject, FlutterPlatformView {
     private var controlId: Int
     private var isDark: Bool = false
     private var textColor: UIColor?
+    private var selectedTextColor: UIColor?
+    private var fontSize: CGFloat?
+    private var selectedFontSize: CGFloat?
+    private var fontWeight: UIFont.Weight?
+    private var selectedFontWeight: UIFont.Weight?
 
     init(
         frame: CGRect,
@@ -127,6 +132,21 @@ class iOS26SegmentedControlView: NSObject, FlutterPlatformView {
             if let textColorValue = config["textColor"] as? Int {
                 textColor = colorFromARGB(textColorValue)
             }
+            if let selectedTextColorValue = config["selectedTextColor"] as? Int {
+                selectedTextColor = colorFromARGB(selectedTextColorValue)
+            }
+            if let fontSizeValue = config["fontSize"] as? NSNumber {
+                fontSize = CGFloat(fontSizeValue.doubleValue)
+            }
+            if let selectedFontSizeValue = config["selectedFontSize"] as? NSNumber {
+                selectedFontSize = CGFloat(selectedFontSizeValue.doubleValue)
+            }
+            if let fontWeightValue = config["fontWeight"] as? NSNumber {
+                fontWeight = fontWeightFromIndex(fontWeightValue.intValue)
+            }
+            if let selectedFontWeightValue = config["selectedFontWeight"] as? NSNumber {
+                selectedFontWeight = fontWeightFromIndex(selectedFontWeightValue.intValue)
+            }
 
             // Set selected index
             if let selectedIndex = config["selectedIndex"] as? Int, selectedIndex >= 0 {
@@ -164,14 +184,52 @@ class iOS26SegmentedControlView: NSObject, FlutterPlatformView {
 
     private func applyTheme() {
         let normalTextColor = textColor ?? .label
+        let selectedTextColor = selectedTextColor ?? normalTextColor
+        let normalFont = UIFont.systemFont(
+            ofSize: fontSize ?? UIFont.systemFontSize,
+            weight: fontWeight ?? .regular
+        )
+        let selectedFont = UIFont.systemFont(
+            ofSize: selectedFontSize ?? fontSize ?? UIFont.systemFontSize,
+            weight: selectedFontWeight ?? fontWeight ?? .regular
+        )
+
         segmentedControl.setTitleTextAttributes(
-            [.foregroundColor: normalTextColor],
+            [
+                .foregroundColor: normalTextColor,
+                .font: normalFont
+            ],
             for: .normal
         )
         segmentedControl.setTitleTextAttributes(
-            [.foregroundColor: normalTextColor.withAlphaComponent(0.5)],
+            [
+                .foregroundColor: selectedTextColor,
+                .font: selectedFont
+            ],
+            for: .selected
+        )
+        segmentedControl.setTitleTextAttributes(
+            [
+                .foregroundColor: normalTextColor.withAlphaComponent(0.5),
+                .font: normalFont
+            ],
             for: .disabled
         )
+    }
+
+    private func fontWeightFromIndex(_ index: Int) -> UIFont.Weight {
+        switch index {
+        case 0: return .ultraLight
+        case 1: return .thin
+        case 2: return .light
+        case 3: return .regular
+        case 4: return .medium
+        case 5: return .semibold
+        case 6: return .bold
+        case 7: return .heavy
+        case 8: return .black
+        default: return .regular
+        }
     }
 
     @objc private func segmentChanged() {
@@ -205,6 +263,21 @@ class iOS26SegmentedControlView: NSObject, FlutterPlatformView {
 
                 if let textColorValue = args["textColor"] as? Int {
                     textColor = colorFromARGB(textColorValue)
+                }
+                if let selectedTextColorValue = args["selectedTextColor"] as? Int {
+                    selectedTextColor = colorFromARGB(selectedTextColorValue)
+                }
+                if let fontSizeValue = args["fontSize"] as? NSNumber {
+                    fontSize = CGFloat(fontSizeValue.doubleValue)
+                }
+                if let selectedFontSizeValue = args["selectedFontSize"] as? NSNumber {
+                    selectedFontSize = CGFloat(selectedFontSizeValue.doubleValue)
+                }
+                if let fontWeightValue = args["fontWeight"] as? NSNumber {
+                    fontWeight = fontWeightFromIndex(fontWeightValue.intValue)
+                }
+                if let selectedFontWeightValue = args["selectedFontWeight"] as? NSNumber {
+                    selectedFontWeight = fontWeightFromIndex(selectedFontWeightValue.intValue)
                 }
 
                 applyTheme()

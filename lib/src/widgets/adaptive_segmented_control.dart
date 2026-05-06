@@ -22,6 +22,7 @@ class AdaptiveSegmentedControl extends StatelessWidget {
     this.sfSymbols,
     this.iconSize,
     this.iconColor,
+    this.fontSize,
     this.textColor,
     this.selectedTextColor,
   });
@@ -56,6 +57,9 @@ class AdaptiveSegmentedControl extends StatelessWidget {
   /// Icon color
   final Color? iconColor;
 
+  /// Optional font size for segment labels.
+  final double? fontSize;
+
   /// Optional text color for unselected segments.
   final Color? textColor;
 
@@ -77,6 +81,7 @@ class AdaptiveSegmentedControl extends StatelessWidget {
         icons: sfSymbols,
         iconSize: iconSize,
         iconColor: iconColor,
+        fontSize: fontSize,
         textColor: textColor,
         selectedTextColor: selectedTextColor,
       );
@@ -132,7 +137,7 @@ class AdaptiveSegmentedControl extends StatelessWidget {
           child: Text(
             labels[i],
             style: TextStyle(
-              fontSize: 13,
+              fontSize: fontSize ?? 13,
               fontWeight: FontWeight.w500,
               color: selectedIndex == i
                   ? effectiveSelectedTextColor
@@ -208,7 +213,7 @@ class AdaptiveSegmentedControl extends StatelessWidget {
             label: Text(
               labels[i],
               style: TextStyle(
-                fontSize: 13,
+                fontSize: fontSize ?? 13,
                 fontWeight: FontWeight.w500,
                 color: selectedIndex == i
                     ? effectiveSelectedTextColor

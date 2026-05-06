@@ -84,6 +84,30 @@ void main() {
       expect(find.text('A'), findsOneWidget);
       expect(find.text('B'), findsOneWidget);
     });
+
+    testWidgets('respects custom font size', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: AdaptiveSegmentedControl(
+                  labels: const ['Small', 'Large'],
+                  selectedIndex: 0,
+                  height: 44.0,
+                  fontSize: 18.0,
+                  onValueChanged: (index) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final text = tester.widget<Text>(find.text('Small'));
+      expect(text.style?.fontSize, 18.0);
+    });
   });
 
   group('AdaptiveAlertDialog', () {

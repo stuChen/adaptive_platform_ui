@@ -19,6 +19,7 @@ class IOS26SegmentedControl extends StatefulWidget {
     this.icons,
     this.iconSize,
     this.iconColor,
+    this.fontSize,
     this.textColor,
     this.selectedTextColor,
   });
@@ -53,6 +54,9 @@ class IOS26SegmentedControl extends StatefulWidget {
   /// Icon color (when using icons)
   final Color? iconColor;
 
+  /// Optional font size for segment labels.
+  final double? fontSize;
+
   /// Optional text color for unselected segments.
   final Color? textColor;
 
@@ -71,6 +75,7 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
   int? _lastTintColor;
   int? _lastTextColor;
   int? _lastSelectedTextColor;
+  double? _lastFontSize;
 
   @override
   void initState() {
@@ -109,7 +114,8 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
     if (_lastIsDark != isDark ||
         _lastTintColor != tintColor ||
         _lastTextColor != textColor ||
-        _lastSelectedTextColor != selectedTextColor) {
+        _lastSelectedTextColor != selectedTextColor ||
+        _lastFontSize != widget.fontSize) {
       try {
         await _channel.invokeMethod('setBrightness', {
           'isDark': isDark,
@@ -120,6 +126,7 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
         _lastTintColor = tintColor;
         _lastTextColor = textColor;
         _lastSelectedTextColor = selectedTextColor;
+        _lastFontSize = widget.fontSize;
       } catch (e) {
         // Ignore errors if platform view is not yet ready
       }
@@ -176,13 +183,12 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
 
     final effectiveSelectedTextColor =
         widget.selectedTextColor ??
-        (widget.color != null
-            ? CupertinoColors.white
-            : effectiveTextColor);
+        (widget.color != null ? CupertinoColors.white : effectiveTextColor);
 
     return <String, dynamic>{
       'textColor': _colorToARGB(effectiveTextColor),
       'selectedTextColor': _colorToARGB(effectiveSelectedTextColor),
+      if (widget.fontSize != null) 'fontSize': widget.fontSize!,
     };
   }
 
@@ -255,7 +261,10 @@ class _IOS26SegmentedControlState extends State<IOS26SegmentedControl> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Text(
           widget.labels[i],
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            fontSize: widget.fontSize ?? 13,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       );
     }

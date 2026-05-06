@@ -38,6 +38,7 @@ class iOS26SegmentedControlView: NSObject, FlutterPlatformView {
     private var tintColor: UIColor?
     private var textColor: UIColor?
     private var selectedTextColor: UIColor?
+    private var fontSize: CGFloat = 13
 
     init(
         frame: CGRect,
@@ -131,6 +132,9 @@ class iOS26SegmentedControlView: NSObject, FlutterPlatformView {
             if let selectedTextColorValue = config["selectedTextColor"] as? Int {
                 selectedTextColor = colorFromARGB(selectedTextColorValue)
             }
+            if let fontSizeValue = config["fontSize"] as? NSNumber {
+                fontSize = CGFloat(fontSizeValue.doubleValue)
+            }
 
             // Set selected index
             if let selectedIndex = config["selectedIndex"] as? Int, selectedIndex >= 0 {
@@ -169,7 +173,7 @@ class iOS26SegmentedControlView: NSObject, FlutterPlatformView {
     private func applyTheme() {
         let normalTextColor = textColor ?? .label
         let selectedColor = selectedTextColor ?? normalTextColor
-        let font = UIFont.systemFont(ofSize: 13, weight: .medium)
+        let font = UIFont.systemFont(ofSize: fontSize, weight: .medium)
         let normalAttributes: [NSAttributedString.Key: Any] = [
             .foregroundColor: normalTextColor,
             .font: font,
@@ -233,6 +237,9 @@ class iOS26SegmentedControlView: NSObject, FlutterPlatformView {
                 }
                 if let selectedTextColorValue = args["selectedTextColor"] as? Int {
                     selectedTextColor = colorFromARGB(selectedTextColorValue)
+                }
+                if let fontSizeValue = args["fontSize"] as? NSNumber {
+                    fontSize = CGFloat(fontSizeValue.doubleValue)
                 }
 
                 applyTheme()

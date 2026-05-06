@@ -146,10 +146,16 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
       widget.destinations.map((e) => _extractSymbol(e.icon)).toList();
 
   List<String> _mapAssetIcons() =>
-      widget.destinations.map((e) => _extractAssetPath(e.icon)).toList();
+      widget.destinations
+          .map((e) => e.iconAsset ?? _extractAssetPath(e.icon))
+          .toList();
 
   List<String> _mapSelectedAssetIcons() => widget.destinations
-      .map((e) => _extractAssetPath(e.selectedIcon ?? e.icon))
+      .map(
+        (e) =>
+            e.selectedIconAsset ??
+            _extractAssetPath(e.selectedIcon ?? e.icon),
+      )
       .toList();
 
   List<String> _mapFileIcons() =>

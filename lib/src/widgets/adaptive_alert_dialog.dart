@@ -32,6 +32,37 @@ class AdaptiveAlertDialogInput {
   final int? maxLength;
 }
 
+class _AdaptiveAlertIconSource {
+  const _AdaptiveAlertIconSource({
+    this.iconData,
+    this.symbolName,
+    this.imageProvider,
+    this.widget,
+    this.assetPath,
+    this.assetPackage,
+    this.filePath,
+    this.networkUrl,
+  });
+
+  final IconData? iconData;
+  final String? symbolName;
+  final ImageProvider? imageProvider;
+  final Widget? widget;
+  final String? assetPath;
+  final String? assetPackage;
+  final String? filePath;
+  final String? networkUrl;
+
+  bool get hasVisual =>
+      iconData != null ||
+      symbolName != null ||
+      imageProvider != null ||
+      widget != null ||
+      assetPath != null ||
+      filePath != null ||
+      networkUrl != null;
+}
+
 /// An adaptive alert dialog that renders platform-specific styles
 ///
 /// On iOS 26+: Uses native iOS 26 UIAlertController with Liquid Glass
@@ -40,12 +71,148 @@ class AdaptiveAlertDialogInput {
 class AdaptiveAlertDialog {
   AdaptiveAlertDialog._();
 
+  static _AdaptiveAlertIconSource _resolveIconSource({
+    required dynamic icon,
+    String? iconAsset,
+    String? assetPackage,
+  }) {
+    if (iconAsset != null) {
+      return _AdaptiveAlertIconSource(
+        imageProvider: AssetImage(iconAsset, package: assetPackage),
+        assetPath: iconAsset,
+        assetPackage: assetPackage,
+      );
+    }
+
+    if (icon is ImageIcon) {
+      return _resolveIconSource(icon: icon.image);
+    }
+
+    if (icon is AssetImage) {
+      return _AdaptiveAlertIconSource(
+        imageProvider: icon,
+        assetPath: icon.assetName,
+      );
+    }
+
+    if (icon is FileImage) {
+      return _AdaptiveAlertIconSource(
+        imageProvider: icon,
+        filePath: icon.file.path,
+      );
+    }
+
+    if (icon is NetworkImage) {
+      return _AdaptiveAlertIconSource(
+        imageProvider: icon,
+        networkUrl: icon.url,
+      );
+    }
+
+    if (icon is ImageProvider) {
+      return _AdaptiveAlertIconSource(imageProvider: icon);
+    }
+
+    if (icon is Widget) {
+      return _AdaptiveAlertIconSource(widget: icon);
+    }
+
+    if (icon is String) {
+      if (icon.contains('/')) {
+        return _AdaptiveAlertIconSource(
+          imageProvider: AssetImage(icon, package: assetPackage),
+          assetPath: icon,
+          assetPackage: assetPackage,
+        );
+      }
+      return _AdaptiveAlertIconSource(symbolName: icon);
+    }
+
+    if (icon is IconData) {
+      return _AdaptiveAlertIconSource(iconData: icon);
+    }
+
+    return const _AdaptiveAlertIconSource();
+  }
+
+  static Widget _buildAlertIconWidget(
+    _AdaptiveAlertIconSource source, {
+    required TargetPlatform platform,
+    double? size,
+    Color? color,
+  }) {
+    final dimension = size ?? 40;
+
+    if (source.widget != null) {
+      return SizedBox(
+        width: dimension,
+        height: dimension,
+        child: source.widget,
+      );
+    }
+
+    if (source.imageProvider != null) {
+      return SizedBox(
+        width: dimension,
+        height: dimension,
+        child: Image(
+          image: source.imageProvider!,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => Icon(
+            platform == TargetPlatform.iOS
+                ? CupertinoIcons.photo
+                : Icons.image_not_supported,
+            size: dimension,
+            color: color,
+          ),
+        ),
+      );
+    }
+
+    if (source.iconData != null) {
+      return Icon(source.iconData, size: dimension, color: color);
+    }
+
+    if (source.symbolName != null) {
+      final iconData = platform == TargetPlatform.iOS
+          ? _sfSymbolToCupertinoIcon(source.symbolName!)
+          : Icons.circle;
+      return Icon(iconData, size: dimension, color: color);
+    }
+
+    return SizedBox.square(dimension: dimension);
+  }
+
+  static IconData _sfSymbolToCupertinoIcon(String sfSymbol) {
+    const iconMap = {
+      'checkmark.circle': CupertinoIcons.checkmark_circle,
+      'checkmark.circle.fill': CupertinoIcons.checkmark_alt_circle_fill,
+      'xmark.circle': CupertinoIcons.xmark_circle,
+      'xmark.circle.fill': CupertinoIcons.xmark_circle_fill,
+      'exclamationmark.triangle': CupertinoIcons.exclamationmark_triangle,
+      'exclamationmark.triangle.fill':
+          CupertinoIcons.exclamationmark_triangle_fill,
+      'info.circle': CupertinoIcons.info_circle,
+      'info.circle.fill': CupertinoIcons.info_circle_fill,
+      'trash': CupertinoIcons.trash,
+      'trash.fill': CupertinoIcons.trash_fill,
+      'person.circle': CupertinoIcons.person_circle,
+      'person.circle.fill': CupertinoIcons.person_circle_fill,
+    };
+    return iconMap[sfSymbol] ?? CupertinoIcons.circle;
+  }
+
   /// Shows a standard adaptive alert dialog
   ///
   /// The [icon] parameter accepts:
   /// - iOS 26+: String (SF Symbol name, e.g., "checkmark.circle.fill")
   /// - iOS <26: IconData (e.g., CupertinoIcons.checkmark_alt_circle_fill)
   /// - Android: IconData (e.g., Icons.check_circle)
+  /// - ImageProvider, such as AssetImage, FileImage, or NetworkImage
+  /// - Widget, such as ImageIcon
+  ///
+  /// [iconAsset] is a convenience wrapper for passing an asset image path,
+  /// matching the AdaptiveNavigationDestination asset-image API.
   ///
   /// Returns a Future that resolves to void when the dialog is dismissed
   static Future<void> show({
@@ -54,21 +221,20 @@ class AdaptiveAlertDialog {
     String? message,
     required List<AlertAction> actions,
     dynamic icon,
+    String? iconAsset,
+    String? assetPackage,
     double? iconSize,
     Color? iconColor,
     String? oneTimeCode,
   }) {
+    final iconSource = _resolveIconSource(
+      icon: icon,
+      iconAsset: iconAsset,
+      assetPackage: assetPackage,
+    );
+
     // iOS 26+ - Use native iOS 26 alert dialog
     if (PlatformInfo.isIOS26OrHigher()) {
-      // Convert icon to String if needed for iOS 26 (expects SF Symbol)
-      String? iconString;
-      if (icon != null) {
-        if (icon is String) {
-          iconString = icon;
-        }
-        // If IconData is provided on iOS 26+, ignore it (iOS 26 uses SF Symbols)
-      }
-
       return showCupertinoDialog<void>(
         context: context,
         barrierColor: CupertinoColors.transparent,
@@ -76,7 +242,11 @@ class AdaptiveAlertDialog {
           title: title,
           message: message,
           actions: actions,
-          icon: iconString,
+          icon: iconSource.symbolName,
+          iconAsset: iconSource.assetPath,
+          iconAssetPackage: iconSource.assetPackage,
+          iconFilePath: iconSource.filePath,
+          iconNetworkUrl: iconSource.networkUrl,
           iconSize: iconSize,
           iconColor: iconColor,
           oneTimeCode: oneTimeCode,
@@ -91,8 +261,7 @@ class AdaptiveAlertDialog {
         context: context,
         builder: (context) {
           Widget? contentWidget;
-          final hasLegacyIcon =
-              icon != null && icon is IconData && iconSize != null;
+          final hasLegacyIcon = iconSource.hasVisual;
           final hasOtpCode = oneTimeCode != null;
           final hasContentBelowMessage = hasOtpCode;
           final hasScrollableLegacyContent =
@@ -111,10 +280,13 @@ class AdaptiveAlertDialog {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (hasLegacyIcon) ...[
-                      Icon(
-                        icon,
-                        size: iconSize,
-                        color: iconColor ?? CupertinoColors.systemBlue,
+                      Center(
+                        child: _buildAlertIconWidget(
+                          iconSource,
+                          size: iconSize,
+                          color: iconColor ?? CupertinoColors.systemBlue,
+                          platform: TargetPlatform.iOS,
+                        ),
                       ),
                       const SizedBox(height: 8),
                     ],
@@ -186,6 +358,8 @@ class AdaptiveAlertDialog {
       message: message,
       actions: actions,
       icon: icon,
+      iconAsset: iconAsset,
+      assetPackage: assetPackage,
       iconSize: iconSize,
       iconColor: iconColor,
       oneTimeCode: oneTimeCode,
@@ -204,26 +378,30 @@ class AdaptiveAlertDialog {
     required List<AlertAction> actions,
     required AdaptiveAlertDialogInput input,
     dynamic icon,
+    String? iconAsset,
+    String? assetPackage,
     double? iconSize,
     Color? iconColor,
   }) {
+    final iconSource = _resolveIconSource(
+      icon: icon,
+      iconAsset: iconAsset,
+      assetPackage: assetPackage,
+    );
+
     // iOS 26+ - Use native iOS 26 alert dialog with input
     if (PlatformInfo.isIOS26OrHigher()) {
-      // Convert icon to String if needed for iOS 26 (expects SF Symbol)
-      String? iconString;
-      if (icon != null) {
-        if (icon is String) {
-          iconString = icon;
-        }
-      }
-
       return showCupertinoDialog<String?>(
         context: context,
         builder: (context) => IOS26AlertDialog(
           title: title,
           message: message,
           actions: actions,
-          icon: iconString,
+          icon: iconSource.symbolName,
+          iconAsset: iconSource.assetPath,
+          iconAssetPackage: iconSource.assetPackage,
+          iconFilePath: iconSource.filePath,
+          iconNetworkUrl: iconSource.networkUrl,
           iconSize: iconSize,
           iconColor: iconColor,
           oneTimeCode: null,
@@ -249,11 +427,14 @@ class AdaptiveAlertDialog {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (icon != null && icon is IconData && iconSize != null) ...[
-                    Icon(
-                      icon,
-                      size: iconSize,
-                      color: iconColor ?? CupertinoColors.systemBlue,
+                  if (iconSource.hasVisual) ...[
+                    Center(
+                      child: _buildAlertIconWidget(
+                        iconSource,
+                        size: iconSize,
+                        color: iconColor ?? CupertinoColors.systemBlue,
+                        platform: TargetPlatform.iOS,
+                      ),
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -318,6 +499,8 @@ class AdaptiveAlertDialog {
       message: message,
       actions: actions,
       icon: icon,
+      iconAsset: iconAsset,
+      assetPackage: assetPackage,
       iconSize: iconSize,
       iconColor: iconColor,
       oneTimeCode: null,
@@ -332,24 +515,30 @@ class AdaptiveAlertDialog {
     String? message,
     required List<AlertAction> actions,
     dynamic icon,
+    String? iconAsset,
+    String? assetPackage,
     double? iconSize,
     Color? iconColor,
     String? oneTimeCode,
     AdaptiveAlertDialogInput? input,
   }) {
     final textController = TextEditingController(text: input?.initialValue);
+    final iconSource = _resolveIconSource(
+      icon: icon,
+      iconAsset: iconAsset,
+      assetPackage: assetPackage,
+    );
 
     return showDialog<T>(
       context: context,
       builder: (context) {
         // Build custom content if icon, OTP, or textfield is present
         Widget? contentWidget;
-        final hasMaterialIcon =
-            icon != null && icon is IconData && iconSize != null;
+        final hasMaterialIcon = iconSource.hasVisual;
         final hasOtpCode = oneTimeCode != null;
         final hasInput = input != null;
         final hasContentBelowMessage = hasOtpCode || hasInput;
-        if (icon != null ||
+        if (hasMaterialIcon ||
             oneTimeCode != null ||
             message != null ||
             input != null) {
@@ -357,7 +546,12 @@ class AdaptiveAlertDialog {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (hasMaterialIcon) ...[
-                Icon(icon, size: iconSize, color: iconColor ?? Colors.blue),
+                _buildAlertIconWidget(
+                  iconSource,
+                  size: iconSize,
+                  color: iconColor ?? Colors.blue,
+                  platform: TargetPlatform.android,
+                ),
                 const SizedBox(height: 12),
               ],
               if (message != null) ...[

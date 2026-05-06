@@ -40,7 +40,15 @@ public class AdaptivePlatformUiPlugin: NSObject, FlutterPlugin {
         )
 
         // Register iOS 26 AlertDialog platform view factory
-        let ios26AlertDialogFactory = iOS26AlertDialogViewFactory(messenger: registrar.messenger())
+        let ios26AlertDialogFactory = iOS26AlertDialogViewFactory(
+            messenger: registrar.messenger(),
+            assetKeyResolver: { asset, package in
+                if let package {
+                    return registrar.lookupKey(forAsset: asset, fromPackage: package)
+                }
+                return registrar.lookupKey(forAsset: asset)
+            }
+        )
         registrar.register(
             ios26AlertDialogFactory,
             withId: "adaptive_platform_ui/ios26_alert_dialog"

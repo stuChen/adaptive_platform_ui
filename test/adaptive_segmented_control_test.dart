@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
@@ -140,6 +143,42 @@ void main() {
       expect(find.text('Alert'), findsOneWidget);
       expect(find.text('This is a message'), findsOneWidget);
       expect(find.text('OK'), findsOneWidget);
+    });
+
+    testWidgets('shows alert dialog with image icon', (
+      WidgetTester tester,
+    ) async {
+      final transparentPixel = base64Decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wn0nXsAAAAASUVORK5CYII=',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  AdaptiveAlertDialog.show(
+                    context: context,
+                    title: 'Image Alert',
+                    message: 'This alert has an image',
+                    icon: MemoryImage(Uint8List.fromList(transparentPixel)),
+                    iconSize: 48,
+                    actions: [AlertAction(title: 'OK', onPressed: () {})],
+                  );
+                },
+                child: const Text('Show Image Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Show Image Dialog'));
+      await tester.pump();
+
+      expect(find.text('Image Alert'), findsOneWidget);
+      expect(find.byType(Image), findsOneWidget);
     });
 
     testWidgets('calls action onPressed when button tapped', (

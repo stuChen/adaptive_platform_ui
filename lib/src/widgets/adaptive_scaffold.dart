@@ -12,13 +12,20 @@ import 'ios26/ios26_scaffold.dart';
 /// Navigation destination for bottom navigation
 class AdaptiveNavigationDestination {
   const AdaptiveNavigationDestination({
-    required this.icon,
+    this.icon,
     required this.label,
     this.selectedIcon,
+    this.iconAsset,
+    this.selectedIconAsset,
+    this.assetPackage,
+    this.iconSize,
     this.isSearch = false,
     this.badgeCount,
     this.addSpacerAfter = false,
-  });
+  }) : assert(
+         icon != null || iconAsset != null,
+         'Either icon or iconAsset must be provided.',
+       );
 
   /// Icon to display.
   ///
@@ -34,6 +41,21 @@ class AdaptiveNavigationDestination {
 
   /// Optional selected state icon
   final dynamic selectedIcon;
+
+  /// Optional asset image path for the unselected icon.
+  ///
+  /// This mirrors passing an [AssetImage] through [icon], but keeps the API
+  /// convenient for tab bars that need to forward asset paths to native iOS.
+  final String? iconAsset;
+
+  /// Optional asset image path for the selected icon.
+  final String? selectedIconAsset;
+
+  /// Optional package for [iconAsset] and [selectedIconAsset].
+  final String? assetPackage;
+
+  /// Optional size for asset/image icons.
+  final double? iconSize;
 
   /// Whether this is a search tab (iOS 26+)
   /// Search tabs are visually separated and transform into a search field
@@ -362,13 +384,27 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               activeColor: widget.bottomNavigationBar!.selectedItemColor,
               items: widget.bottomNavigationBar!.items!.map((dest) {
                 Widget iconWidget = _buildNavigationIconWidget(
-                  rawIcon: dest.icon,
+                  rawIcon: dest.iconAsset != null
+                      ? AssetImage(dest.iconAsset!, package: dest.assetPackage)
+                      : dest.icon,
                   color: unselectedColor,
+                  size: dest.iconSize,
                   platform: TargetPlatform.iOS,
                 );
 
                 Widget activeIconWidget = _buildNavigationIconWidget(
-                  rawIcon: dest.selectedIcon ?? dest.icon,
+                  rawIcon: dest.selectedIconAsset != null
+                      ? AssetImage(
+                          dest.selectedIconAsset!,
+                          package: dest.assetPackage,
+                        )
+                      : dest.selectedIcon ??
+                            dest.icon ??
+                            AssetImage(
+                              dest.iconAsset!,
+                              package: dest.assetPackage,
+                            ),
+                  size: dest.iconSize,
                   platform: TargetPlatform.iOS,
                 );
 
@@ -593,9 +629,9 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               );
             }
             return IconButton(
-              icon: action.icon != null
-                  ? Icon(action.icon!)
-                  : const Icon(Icons.circle),
+              icon: action.buildContent(
+                fallbackIcon: action.icon ?? Icons.circle,
+              ),
               onPressed: action.onPressed,
             );
           }).toList(),
@@ -618,12 +654,23 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
           indicatorColor: widget.bottomNavigationBar!.selectedItemColor,
           destinations: widget.bottomNavigationBar!.items!.map((dest) {
             Widget iconWidget = _buildNavigationIconWidget(
-              rawIcon: dest.icon,
+              rawIcon: dest.iconAsset != null
+                  ? AssetImage(dest.iconAsset!, package: dest.assetPackage)
+                  : dest.icon,
+              size: dest.iconSize,
               platform: TargetPlatform.android,
             );
 
             Widget selectedIconWidget = _buildNavigationIconWidget(
-              rawIcon: dest.selectedIcon ?? dest.icon,
+              rawIcon: dest.selectedIconAsset != null
+                  ? AssetImage(
+                      dest.selectedIconAsset!,
+                      package: dest.assetPackage,
+                    )
+                  : dest.selectedIcon ??
+                        dest.icon ??
+                        AssetImage(dest.iconAsset!, package: dest.assetPackage),
+              size: dest.iconSize,
               platform: TargetPlatform.android,
             );
 
@@ -688,9 +735,9 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
             );
           }
           return IconButton(
-            icon: action.icon != null
-                ? Icon(action.icon!)
-                : const Icon(Icons.circle),
+            icon: action.buildContent(
+              fallbackIcon: action.icon ?? Icons.circle,
+            ),
             onPressed: action.onPressed,
           );
         }).toList(),
@@ -747,6 +794,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
   Widget _buildNavigationIconWidget({
     required dynamic rawIcon,
     Color? color,
+    double? size,
     required TargetPlatform platform,
   }) {
     if (rawIcon is Widget) {
@@ -756,7 +804,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     }
 
     if (rawIcon is ImageProvider) {
-      return _NavigationImageIcon(image: rawIcon);
+      return _NavigationImageIcon(image: rawIcon, size: size);
     }
 
     final IconData iconData;
@@ -773,15 +821,17 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
 }
 
 class _NavigationImageIcon extends StatelessWidget {
-  const _NavigationImageIcon({required this.image});
+  const _NavigationImageIcon({required this.image, this.size});
 
   final ImageProvider image;
+  final double? size;
 
   @override
   Widget build(BuildContext context) {
+    final dimension = size ?? 26;
     return SizedBox(
-      width: 26,
-      height: 26,
+      width: dimension,
+      height: dimension,
       child: ClipOval(
         child: Image(
           image: image,

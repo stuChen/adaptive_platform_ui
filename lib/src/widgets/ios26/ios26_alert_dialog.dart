@@ -67,6 +67,10 @@ class IOS26AlertDialog extends StatefulWidget {
     this.message,
     required this.actions,
     this.icon,
+    this.iconAsset,
+    this.iconAssetPackage,
+    this.iconFilePath,
+    this.iconNetworkUrl,
     this.iconSize,
     this.iconColor,
     this.oneTimeCode,
@@ -84,6 +88,18 @@ class IOS26AlertDialog extends StatefulWidget {
 
   /// Optional SF Symbol icon name to display in the alert
   final String? icon;
+
+  /// Optional asset image path to display in the alert.
+  final String? iconAsset;
+
+  /// Optional package for [iconAsset].
+  final String? iconAssetPackage;
+
+  /// Optional local file image path to display in the alert.
+  final String? iconFilePath;
+
+  /// Optional network image URL to display in the alert.
+  final String? iconNetworkUrl;
 
   /// Optional icon size
   final double? iconSize;
@@ -147,6 +163,12 @@ class _IOS26AlertDialogState extends State<IOS26AlertDialog> {
         'actionStyles': widget.actions.map((a) => a.style.name).toList(),
         'actionEnabled': widget.actions.map((a) => a.enabled).toList(),
         if (widget.icon != null) 'iconName': widget.icon,
+        if (widget.iconAsset != null) 'iconAsset': widget.iconAsset,
+        if (widget.iconAssetPackage != null)
+          'iconAssetPackage': widget.iconAssetPackage,
+        if (widget.iconFilePath != null) 'iconFilePath': widget.iconFilePath,
+        if (widget.iconNetworkUrl != null)
+          'iconNetworkUrl': widget.iconNetworkUrl,
         if (widget.iconSize != null) 'iconSize': widget.iconSize,
         if (widget.iconColor != null)
           'iconColor': _colorToARGB(widget.iconColor!),

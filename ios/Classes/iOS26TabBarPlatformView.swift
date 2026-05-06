@@ -180,6 +180,17 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
 
         if let bg = bg { bar.barTintColor = bg }
 
+        self.currentLabels = labels
+        self.currentSymbols = symbols
+        self.currentAssetIcons = assetIcons
+        self.currentSelectedAssetIcons = selectedAssetIcons
+        self.currentFileIcons = fileIcons
+        self.currentSelectedFileIcons = selectedFileIcons
+        self.currentNetworkIcons = networkIcons
+        self.currentSelectedNetworkIcons = selectedNetworkIcons
+        self.currentSearchFlags = searchFlags
+        self.currentBadgeCounts = badgeCounts
+
         // Build tab bar items
         func buildItems(_ range: Range<Int>) -> [UITabBarItem] {
             var items: [UITabBarItem] = []
@@ -197,11 +208,13 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
                         if let title = title {
                             item.title = title
                         }
+                        self.configureSearchItemImages(for: item, index: i, unselectedTint: unselectedTint)
 
                     } else {
                         // Fallback for older iOS versions
                         let searchImage = UIImage(systemName: "magnifyingglass")
                         item = UITabBarItem(title: title, image: searchImage, selectedImage: searchImage)
+                        self.configureSearchItemImages(for: item, index: i, unselectedTint: nil)
                     }
                 } else {
                     var image: UIImage? = nil
@@ -301,16 +314,6 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
         ])
 
         self.minimizeBehavior = minimize
-        self.currentLabels = labels
-        self.currentSymbols = symbols
-        self.currentAssetIcons = assetIcons
-        self.currentSelectedAssetIcons = selectedAssetIcons
-        self.currentFileIcons = fileIcons
-        self.currentSelectedFileIcons = selectedFileIcons
-        self.currentNetworkIcons = networkIcons
-        self.currentSelectedNetworkIcons = selectedNetworkIcons
-        self.currentSearchFlags = searchFlags
-        self.currentBadgeCounts = badgeCounts
         // Apply minimize behavior if available
         self.applyMinimizeBehavior()
 
@@ -415,11 +418,17 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
                             if let title = title {
                                 item.title = title
                             }
+                            self.configureSearchItemImages(
+                                for: item,
+                                index: i,
+                                unselectedTint: self.tabBar?.unselectedItemTintColor
+                            )
 
                         } else {
                             // Fallback for older iOS versions
                             let searchImage = UIImage(systemName: "magnifyingglass")
                             item = UITabBarItem(title: title, image: searchImage, selectedImage: searchImage)
+                            self.configureSearchItemImages(for: item, index: i, unselectedTint: nil)
                         }
                     } else {
                         var image: UIImage? = nil
@@ -650,9 +659,15 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
                 if #available(iOS 26.0, *) {
                     item = UITabBarItem(tabBarSystemItem: .search, tag: i)
                     item.title = title
+                    configureSearchItemImages(
+                        for: item,
+                        index: i,
+                        unselectedTint: bar.unselectedItemTintColor
+                    )
                 } else {
                     let searchImage = UIImage(systemName: "magnifyingglass")
                     item = UITabBarItem(title: title, image: searchImage, selectedImage: searchImage)
+                    configureSearchItemImages(for: item, index: i, unselectedTint: nil)
                 }
             } else {
                 var image: UIImage? = nil
@@ -779,6 +794,55 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
             !runtimeNetworkURL(for: index, selected: false).isEmpty ||
             !runtimeFilePath(for: index, selected: true).isEmpty ||
             !runtimeNetworkURL(for: index, selected: true).isEmpty
+    }
+
+    private func configureSearchItemImages(
+        for item: UITabBarItem,
+        index: Int,
+        unselectedTint: UIColor?
+    ) {
+        if configureRuntimeImages(for: item, index: index) {
+            return
+        }
+
+        var image: UIImage? = nil
+        var selectedImage: UIImage? = nil
+
+        if index < currentAssetIcons.count && !currentAssetIcons[index].isEmpty {
+            let key = assetKeyResolver(currentAssetIcons[index], nil)
+            let rawImageOriginal = UIImage(named: key)
+            let rawImage = rawImageOriginal != nil ? resizeImage(image: rawImageOriginal!) : nil
+
+            var selRawImage = rawImage
+            if index < currentSelectedAssetIcons.count,
+               !currentSelectedAssetIcons[index].isEmpty {
+                let selKey = assetKeyResolver(currentSelectedAssetIcons[index], nil)
+                let selRawOriginal = UIImage(named: selKey)
+                if selRawOriginal != nil {
+                    selRawImage = resizeImage(image: selRawOriginal!)
+                }
+            }
+
+            if let unselectedTint = unselectedTint {
+                image = rawImage?.withTintColor(unselectedTint, renderingMode: .alwaysOriginal)
+            } else {
+                image = rawImage?.withRenderingMode(.alwaysTemplate)
+            }
+            selectedImage = selRawImage?.withRenderingMode(.alwaysTemplate)
+        } else if index < currentSymbols.count && !currentSymbols[index].isEmpty {
+            if let unselectedTint = unselectedTint,
+               let originalImage = UIImage(systemName: currentSymbols[index]) {
+                image = originalImage.withTintColor(unselectedTint, renderingMode: .alwaysOriginal)
+            } else {
+                image = UIImage(systemName: currentSymbols[index])?.withRenderingMode(.alwaysTemplate)
+            }
+            selectedImage = UIImage(systemName: currentSymbols[index])?.withRenderingMode(.alwaysTemplate)
+        }
+
+        if image != nil || selectedImage != nil {
+            item.image = image
+            item.selectedImage = selectedImage ?? image
+        }
     }
 
     private func placeholderAvatarImage() -> UIImage? {

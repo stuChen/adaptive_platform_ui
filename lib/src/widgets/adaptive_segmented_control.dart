@@ -22,8 +22,8 @@ class AdaptiveSegmentedControl extends StatelessWidget {
     this.sfSymbols,
     this.iconSize,
     this.iconColor,
-    this.textStyle,
-    this.selectedTextStyle,
+    this.textColor,
+    this.selectedTextColor,
   });
 
   /// Segment labels to display, in order
@@ -56,11 +56,11 @@ class AdaptiveSegmentedControl extends StatelessWidget {
   /// Icon color
   final Color? iconColor;
 
-  /// Text style for unselected labels
-  final TextStyle? textStyle;
+  /// Optional text color for unselected segments.
+  final Color? textColor;
 
-  /// Text style for the selected label
-  final TextStyle? selectedTextStyle;
+  /// Optional text color for the selected segment.
+  final Color? selectedTextColor;
 
   @override
   Widget build(BuildContext context) {
@@ -77,8 +77,8 @@ class AdaptiveSegmentedControl extends StatelessWidget {
         icons: sfSymbols,
         iconSize: iconSize,
         iconColor: iconColor,
-        textStyle: textStyle,
-        selectedTextStyle: selectedTextStyle,
+        textColor: textColor,
+        selectedTextColor: selectedTextColor,
       );
     }
 
@@ -97,6 +97,17 @@ class AdaptiveSegmentedControl extends StatelessWidget {
   }
 
   Widget _buildCupertinoSegmentedControl(BuildContext context) {
+    final theme = CupertinoTheme.of(context);
+    final effectiveTextColor =
+        textColor ??
+        theme.textTheme.textStyle.color ??
+        (Theme.of(context).brightness == Brightness.dark
+            ? CupertinoColors.white
+            : CupertinoColors.black);
+    final effectiveSelectedTextColor =
+        selectedTextColor ??
+        (color != null ? CupertinoColors.white : effectiveTextColor);
+
     // Build children map from labels or icons
     final Map<int, Widget> children = {};
 
@@ -120,21 +131,38 @@ class AdaptiveSegmentedControl extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Text(
             labels[i],
-            style: _resolveTextStyle(selected: i == selectedIndex),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: selectedIndex == i
+                  ? effectiveSelectedTextColor
+                  : effectiveTextColor,
+            ),
           ),
         );
       }
     }
 
-    Widget control = CupertinoSlidingSegmentedControl<int>(
-      children: children,
-      groupValue: selectedIndex,
-      onValueChanged: (int? value) {
-        if (enabled && value != null) {
-          onValueChanged(value);
-        }
-      },
-    );
+    Widget control = color != null
+        ? CupertinoSlidingSegmentedControl<int>(
+            children: children,
+            groupValue: selectedIndex,
+            thumbColor: color!,
+            onValueChanged: (int? value) {
+              if (enabled && value != null) {
+                onValueChanged(value);
+              }
+            },
+          )
+        : CupertinoSlidingSegmentedControl<int>(
+            children: children,
+            groupValue: selectedIndex,
+            onValueChanged: (int? value) {
+              if (enabled && value != null) {
+                onValueChanged(value);
+              }
+            },
+          );
 
     control = ConstrainedBox(
       constraints: BoxConstraints(minHeight: height),
@@ -149,6 +177,11 @@ class AdaptiveSegmentedControl extends StatelessWidget {
   }
 
   Widget _buildMaterialSegmentedButton(BuildContext context) {
+    final theme = Theme.of(context);
+    final effectiveTextColor = textColor ?? theme.colorScheme.onSurface;
+    final effectiveSelectedTextColor =
+        selectedTextColor ??
+        (color != null ? Colors.white : effectiveTextColor);
     final segments = <ButtonSegment<int>>[];
 
     // Check if using icons
@@ -174,12 +207,26 @@ class AdaptiveSegmentedControl extends StatelessWidget {
             value: i,
             label: Text(
               labels[i],
-              style: _resolveTextStyle(selected: i == selectedIndex),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: selectedIndex == i
+                    ? effectiveSelectedTextColor
+                    : effectiveTextColor,
+              ),
             ),
           ),
         );
       }
     }
+
+    final buttonStyle = SegmentedButton.styleFrom(
+      minimumSize: Size.fromHeight(height),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      selectedBackgroundColor: color,
+      selectedForegroundColor: selectedTextColor,
+      foregroundColor: textColor,
+    );
 
     Widget control = SegmentedButton<int>(
       segments: segments,
@@ -191,10 +238,7 @@ class AdaptiveSegmentedControl extends StatelessWidget {
               }
             }
           : null,
-      style: SegmentedButton.styleFrom(
-        minimumSize: Size.fromHeight(height),
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      ),
+      style: buttonStyle,
     );
 
     if (shrinkWrap) {
@@ -202,11 +246,5 @@ class AdaptiveSegmentedControl extends StatelessWidget {
     }
 
     return control;
-  }
-
-  TextStyle _resolveTextStyle({required bool selected}) {
-    const baseStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w500);
-    final defaultStyle = baseStyle.merge(textStyle);
-    return selected ? defaultStyle.merge(selectedTextStyle) : defaultStyle;
   }
 }

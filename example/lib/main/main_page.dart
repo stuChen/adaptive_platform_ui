@@ -24,54 +24,54 @@ class _MainPageState extends State<MainPage> {
           minimizeBehavior: TabBarMinimizeBehavior.automatic,
           body: widget.navigationShell,
           bottomNavigationBar:
-          getMatchedLocation(
-            context,
-          ).contains(RouteConstants().badgeNavigation)
+              getMatchedLocation(
+                context,
+              ).contains(RouteConstants().badgeNavigation)
               ? null
               : AdaptiveBottomNavigationBar(
-            selectedIndex: widget.navigationShell.currentIndex,
-            onTap: (index) => onDestinationSelected(index, context),
-            items: [
-              AdaptiveNavigationDestination(
-                icon: PlatformInfo.isIOS26OrHigher()
-                    ? "house.fill"
-                    : PlatformInfo.isIOS
-                    ? CupertinoIcons.home
-                    : Icons.home_outlined,
+                  selectedIndex: widget.navigationShell.currentIndex,
+                  onTap: (index) => onDestinationSelected(index, context),
+                  items: [
+                    AdaptiveNavigationDestination(
+                      icon: PlatformInfo.isIOS26OrHigher()
+                          ? "house.fill"
+                          : PlatformInfo.isIOS
+                          ? CupertinoIcons.home
+                          : Icons.home_outlined,
 
-                selectedIcon: PlatformInfo.isIOS
-                    ? CupertinoIcons.home
-                    : Icons.home,
-                label: 'Home',
-                badgeCount: 1,
-              ),
-              AdaptiveNavigationDestination(
-                icon: PlatformInfo.isIOS26OrHigher()
-                    ? "info.circle"
-                    : PlatformInfo.isIOS
-                    ? CupertinoIcons.info
-                    : Icons.info_outline,
-                selectedIcon: PlatformInfo.isIOS
-                    ? CupertinoIcons.info
-                    : Icons.info,
-                label: 'Info',
-              ),
+                      selectedIcon: PlatformInfo.isIOS
+                          ? CupertinoIcons.home
+                          : Icons.home,
+                      label: 'Home',
+                      badgeCount: 1,
+                    ),
+                    AdaptiveNavigationDestination(
+                      icon: PlatformInfo.isIOS26OrHigher()
+                          ? "info.circle"
+                          : PlatformInfo.isIOS
+                          ? CupertinoIcons.info
+                          : Icons.info_outline,
+                      selectedIcon: PlatformInfo.isIOS
+                          ? CupertinoIcons.info
+                          : Icons.info,
+                      label: 'Info',
+                    ),
 
-              const AdaptiveNavigationDestination(
-                icon: ImageIcon(AssetImage('assets/icons/user.png')),
-                label: 'Profile',
-              ),
-              AdaptiveNavigationDestination(
-                icon: PlatformInfo.isIOS26OrHigher()
-                    ? "magnifyingglass"
-                    : PlatformInfo.isIOS
-                    ? CupertinoIcons.search
-                    : Icons.search,
-                label: 'Search',
-                isSearch: true,
-              ),
-            ],
-          ),
+                    const AdaptiveNavigationDestination(
+                      icon: NetworkImage('https://i.pravatar.cc/100'),
+                      label: 'Profile',
+                    ),
+                    AdaptiveNavigationDestination(
+                      icon: PlatformInfo.isIOS26OrHigher()
+                          ? "magnifyingglass"
+                          : PlatformInfo.isIOS
+                          ? CupertinoIcons.search
+                          : Icons.search,
+                      label: 'Search',
+                      isSearch: true,
+                    ),
+                  ],
+                ),
         ),
       ],
     );

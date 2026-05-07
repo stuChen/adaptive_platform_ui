@@ -148,12 +148,14 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
 
   @override
   Widget build(BuildContext context) {
+    final safePadding = MediaQuery.of(context).padding.top;
+
     if (defaultTargetPlatform != TargetPlatform.iOS ||
         _requiresFlutterToolbar) {
-      return _buildFallbackToolbar();
+      return widget.showNativeView
+          ? _buildFallbackToolbar()
+          : _buildHiddenToolbar(safePadding);
     }
-
-    final safePadding = MediaQuery.of(context).padding.top;
 
     final creationParams = <String, dynamic>{
       if (widget.title != null) 'title': widget.title!,
@@ -179,7 +181,7 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
               onPlatformViewCreated: _onPlatformViewCreated,
               hitTestBehavior: PlatformViewHitTestBehavior.translucent,
             ),
-          if (widget.leading != null)
+          if (widget.showNativeView && widget.leading != null)
             Positioned(
               left: 16,
               bottom: 3,
@@ -191,6 +193,10 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
         ],
       ),
     );
+  }
+
+  Widget _buildHiddenToolbar(double safePadding) {
+    return SizedBox(height: widget.height + safePadding);
   }
 
   void _onPlatformViewCreated(int id) {

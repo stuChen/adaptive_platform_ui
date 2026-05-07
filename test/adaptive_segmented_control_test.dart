@@ -163,7 +163,7 @@ void main() {
                     title: 'Image Alert',
                     message: 'This alert has an image',
                     icon: MemoryImage(Uint8List.fromList(transparentPixel)),
-                    iconSize: 48,
+                    iconSize: const Size(72, 48),
                     actions: [AlertAction(title: 'OK', onPressed: () {})],
                   );
                 },
@@ -179,6 +179,21 @@ void main() {
 
       expect(find.text('Image Alert'), findsOneWidget);
       expect(find.byType(Image), findsOneWidget);
+      final titleText = tester.widget<Text>(find.text('Image Alert'));
+      expect(titleText.style?.color, const Color(0xFF2A2A2A));
+      expect(titleText.style?.fontSize, 24);
+      expect(titleText.style?.fontWeight, FontWeight.w600);
+      final messageText = tester.widget<Text>(
+        find.text('This alert has an image'),
+      );
+      expect(messageText.style?.color, const Color(0xFF5B5B5B));
+      expect(messageText.style?.fontSize, 18);
+      expect(messageText.style?.fontWeight, FontWeight.w400);
+      final imageBox = tester.widget<SizedBox>(
+        find.ancestor(of: find.byType(Image), matching: find.byType(SizedBox)),
+      );
+      expect(imageBox.width, 72);
+      expect(imageBox.height, 48);
     });
 
     testWidgets('calls action onPressed when button tapped', (

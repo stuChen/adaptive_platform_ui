@@ -71,6 +71,18 @@ class _AdaptiveAlertIconSource {
 class AdaptiveAlertDialog {
   AdaptiveAlertDialog._();
 
+  static const TextStyle _alertTitleStyle = TextStyle(
+    color: Color(0xFF2A2A2A),
+    fontSize: 24,
+    fontWeight: FontWeight.w600,
+  );
+
+  static const TextStyle _alertMessageStyle = TextStyle(
+    color: Color(0xFF5B5B5B),
+    fontSize: 18,
+    fontWeight: FontWeight.w400,
+  );
+
   static _AdaptiveAlertIconSource _resolveIconSource({
     required dynamic icon,
     String? iconAsset,
@@ -138,23 +150,24 @@ class AdaptiveAlertDialog {
   static Widget _buildAlertIconWidget(
     _AdaptiveAlertIconSource source, {
     required TargetPlatform platform,
-    double? size,
+    Size? size,
     Color? color,
   }) {
-    final dimension = size ?? 40;
+    final iconSize = size ?? const Size.square(40);
+    final iconDimension = iconSize.shortestSide;
 
     if (source.widget != null) {
       return SizedBox(
-        width: dimension,
-        height: dimension,
+        width: iconSize.width,
+        height: iconSize.height,
         child: source.widget,
       );
     }
 
     if (source.imageProvider != null) {
       return SizedBox(
-        width: dimension,
-        height: dimension,
+        width: iconSize.width,
+        height: iconSize.height,
         child: Image(
           image: source.imageProvider!,
           fit: BoxFit.contain,
@@ -162,7 +175,7 @@ class AdaptiveAlertDialog {
             platform == TargetPlatform.iOS
                 ? CupertinoIcons.photo
                 : Icons.image_not_supported,
-            size: dimension,
+            size: iconDimension,
             color: color,
           ),
         ),
@@ -170,17 +183,58 @@ class AdaptiveAlertDialog {
     }
 
     if (source.iconData != null) {
-      return Icon(source.iconData, size: dimension, color: color);
+      return SizedBox(
+        width: iconSize.width,
+        height: iconSize.height,
+        child: Center(
+          child: Icon(source.iconData, size: iconDimension, color: color),
+        ),
+      );
     }
 
     if (source.symbolName != null) {
       final iconData = platform == TargetPlatform.iOS
           ? _sfSymbolToCupertinoIcon(source.symbolName!)
           : Icons.circle;
-      return Icon(iconData, size: dimension, color: color);
+      return SizedBox(
+        width: iconSize.width,
+        height: iconSize.height,
+        child: Center(
+          child: Icon(iconData, size: iconDimension, color: color),
+        ),
+      );
     }
 
-    return SizedBox.square(dimension: dimension);
+    return SizedBox(width: iconSize.width, height: iconSize.height);
+  }
+
+  static List<Widget> _buildHeaderChildren(
+    _AdaptiveAlertIconSource iconSource, {
+    required String title,
+    required TargetPlatform platform,
+    String? message,
+    Size? iconSize,
+    Color? iconColor,
+    required Color defaultIconColor,
+  }) {
+    return [
+      if (iconSource.hasVisual) ...[
+        Center(
+          child: _buildAlertIconWidget(
+            iconSource,
+            size: iconSize,
+            color: iconColor ?? defaultIconColor,
+            platform: platform,
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+      Text(title, textAlign: TextAlign.center, style: _alertTitleStyle),
+      if (message != null) ...[
+        const SizedBox(height: 8),
+        Text(message, textAlign: TextAlign.center, style: _alertMessageStyle),
+      ],
+    ];
   }
 
   static IconData _sfSymbolToCupertinoIcon(String sfSymbol) {
@@ -223,7 +277,7 @@ class AdaptiveAlertDialog {
     dynamic icon,
     String? iconAsset,
     String? assetPackage,
-    double? iconSize,
+    Size? iconSize,
     Color? iconColor,
     String? oneTimeCode,
   }) {
@@ -279,25 +333,16 @@ class AdaptiveAlertDialog {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (hasLegacyIcon) ...[
-                      Center(
-                        child: _buildAlertIconWidget(
-                          iconSource,
-                          size: iconSize,
-                          color: iconColor ?? CupertinoColors.systemBlue,
-                          platform: TargetPlatform.iOS,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    if (message != null) ...[
-                      Text(
-                        message,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                      if (hasContentBelowMessage) const SizedBox(height: 12),
-                    ],
+                    ..._buildHeaderChildren(
+                      iconSource,
+                      title: title,
+                      message: message,
+                      iconSize: iconSize,
+                      iconColor: iconColor,
+                      defaultIconColor: CupertinoColors.systemBlue,
+                      platform: TargetPlatform.iOS,
+                    ),
+                    if (hasContentBelowMessage) const SizedBox(height: 16),
                     if (hasOtpCode) ...[
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -327,12 +372,11 @@ class AdaptiveAlertDialog {
           }
 
           return CupertinoAlertDialog(
-            title: Text(title),
+            title: contentWidget == null
+                ? Text(title, style: _alertTitleStyle)
+                : null,
             content: contentWidget != null
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: contentWidget,
-                  )
+                ? Padding(padding: EdgeInsets.zero, child: contentWidget)
                 : null,
             actions: actions.map((action) {
               return CupertinoDialogAction(
@@ -380,7 +424,7 @@ class AdaptiveAlertDialog {
     dynamic icon,
     String? iconAsset,
     String? assetPackage,
-    double? iconSize,
+    Size? iconSize,
     Color? iconColor,
   }) {
     final iconSource = _resolveIconSource(
@@ -427,25 +471,16 @@ class AdaptiveAlertDialog {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (iconSource.hasVisual) ...[
-                    Center(
-                      child: _buildAlertIconWidget(
-                        iconSource,
-                        size: iconSize,
-                        color: iconColor ?? CupertinoColors.systemBlue,
-                        platform: TargetPlatform.iOS,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  if (message != null) ...[
-                    Text(
-                      message,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
+                  ..._buildHeaderChildren(
+                    iconSource,
+                    title: title,
+                    message: message,
+                    iconSize: iconSize,
+                    iconColor: iconColor,
+                    defaultIconColor: CupertinoColors.systemBlue,
+                    platform: TargetPlatform.iOS,
+                  ),
+                  const SizedBox(height: 16),
                   CupertinoTextField(
                     controller: textController,
                     placeholder: input.placeholder,
@@ -461,11 +496,8 @@ class AdaptiveAlertDialog {
           );
 
           return CupertinoAlertDialog(
-            title: Text(title),
-            content: Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: contentWidget,
-            ),
+            title: null,
+            content: Padding(padding: EdgeInsets.zero, child: contentWidget),
             actions: actions.map((action) {
               return CupertinoDialogAction(
                 onPressed: () {
@@ -517,7 +549,7 @@ class AdaptiveAlertDialog {
     dynamic icon,
     String? iconAsset,
     String? assetPackage,
-    double? iconSize,
+    Size? iconSize,
     Color? iconColor,
     String? oneTimeCode,
     AdaptiveAlertDialogInput? input,
@@ -544,20 +576,18 @@ class AdaptiveAlertDialog {
             input != null) {
           contentWidget = Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (hasMaterialIcon) ...[
-                _buildAlertIconWidget(
-                  iconSource,
-                  size: iconSize,
-                  color: iconColor ?? Colors.blue,
-                  platform: TargetPlatform.android,
-                ),
-                const SizedBox(height: 12),
-              ],
-              if (message != null) ...[
-                Text(message, textAlign: TextAlign.center),
-                if (hasContentBelowMessage) const SizedBox(height: 16),
-              ],
+              ..._buildHeaderChildren(
+                iconSource,
+                title: title,
+                message: message,
+                iconSize: iconSize,
+                iconColor: iconColor,
+                defaultIconColor: Colors.blue,
+                platform: TargetPlatform.android,
+              ),
+              if (hasContentBelowMessage) const SizedBox(height: 16),
               if (hasOtpCode) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -611,7 +641,10 @@ class AdaptiveAlertDialog {
         );
 
         return AlertDialog(
-          title: Text(title),
+          title: contentWidget == null
+              ? Text(title, textAlign: TextAlign.center)
+              : null,
+          titleTextStyle: _alertTitleStyle,
           content: contentWidget,
           actions: [
             ...normalActions.map((action) {

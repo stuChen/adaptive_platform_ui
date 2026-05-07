@@ -318,7 +318,7 @@ class AlertDialogDemoPage extends StatelessWidget {
       title: 'Notification Settings',
       message: 'Would you like to enable push notifications?',
       icon: 'bell.fill',
-      iconSize: 48,
+      iconSize: const Size.square(48),
       iconColor: PlatformInfo.isIOS ? CupertinoColors.systemBlue : Colors.blue,
       actions: [
         AlertAction(
@@ -362,7 +362,7 @@ class AlertDialogDemoPage extends StatelessWidget {
       title: 'Authentication Required',
       message: 'Use this code to complete your authentication.',
       icon: 'lock.shield.fill',
-      iconSize: 48,
+      iconSize: const Size.square(48),
       iconColor: Colors.blue,
       oneTimeCode: '987654',
       actions: [
@@ -412,7 +412,7 @@ class AlertDialogDemoPage extends StatelessWidget {
       message:
           'This action cannot be undone. All your data will be permanently deleted.',
       icon: 'trash.fill',
-      iconSize: 48,
+      iconSize: const Size.square(48),
       iconColor: PlatformInfo.isIOS ? CupertinoColors.systemRed : Colors.red,
       actions: [
         AlertAction(
@@ -465,7 +465,7 @@ class AlertDialogDemoPage extends StatelessWidget {
       title: 'Success',
       message: 'Your changes have been saved successfully!',
       icon: 'checkmark.circle.fill',
-      iconSize: 48,
+      iconSize: const Size.square(48),
       iconColor: PlatformInfo.isIOS
           ? CupertinoColors.systemGreen
           : Colors.green,
@@ -485,7 +485,7 @@ class AlertDialogDemoPage extends StatelessWidget {
       title: 'Warning',
       message: 'Your storage is almost full. Please free up some space.',
       icon: 'exclamationmark.triangle.fill',
-      iconSize: 48,
+      iconSize: const Size.square(48),
       iconColor: PlatformInfo.isIOS
           ? CupertinoColors.systemOrange
           : Colors.orange,
@@ -511,7 +511,7 @@ class AlertDialogDemoPage extends StatelessWidget {
       message:
           'Failed to connect to the server. Please check your internet connection.',
       icon: 'exclamationmark.circle.fill',
-      iconSize: 48,
+      iconSize: const Size.square(48),
       iconColor: PlatformInfo.isIOS ? CupertinoColors.systemRed : Colors.red,
       actions: [
         AlertAction(
@@ -535,7 +535,7 @@ class AlertDialogDemoPage extends StatelessWidget {
       message:
           'This feature requires iOS 15 or later. Please update your device.',
       icon: 'info.circle.fill',
-      iconSize: 48,
+      iconSize: const Size.square(48),
       iconColor: PlatformInfo.isIOS ? CupertinoColors.systemBlue : Colors.blue,
       actions: [
         AlertAction(
@@ -653,7 +653,7 @@ class AlertDialogDemoPage extends StatelessWidget {
       icon: PlatformInfo.isIOS26OrHigher()
           ? 'lock.fill'
           : (PlatformInfo.isIOS ? CupertinoIcons.lock_fill : Icons.lock),
-      iconSize: 40,
+      iconSize: const Size.square(40),
       iconColor: PlatformInfo.isIOS ? CupertinoColors.systemBlue : Colors.blue,
       input: const AdaptiveAlertDialogInput(
         placeholder: 'Password',
@@ -689,7 +689,7 @@ class AlertDialogDemoPage extends StatelessWidget {
       icon: PlatformInfo.isIOS26OrHigher()
           ? 'envelope.fill'
           : (PlatformInfo.isIOS ? CupertinoIcons.mail_solid : Icons.email),
-      iconSize: 40,
+      iconSize: const Size.square(40),
       iconColor: PlatformInfo.isIOS ? CupertinoColors.systemBlue : Colors.blue,
       input: const AdaptiveAlertDialogInput(
         placeholder: 'email@example.com',
@@ -722,7 +722,7 @@ class AlertDialogDemoPage extends StatelessWidget {
       icon: PlatformInfo.isIOS26OrHigher()
           ? 'phone.fill'
           : (PlatformInfo.isIOS ? CupertinoIcons.phone_fill : Icons.phone),
-      iconSize: 40,
+      iconSize: const Size.square(40),
       iconColor: PlatformInfo.isIOS
           ? CupertinoColors.systemGreen
           : Colors.green,
@@ -759,7 +759,7 @@ class AlertDialogDemoPage extends StatelessWidget {
           : (PlatformInfo.isIOS
                 ? CupertinoIcons.number_circle_fill
                 : Icons.pin),
-      iconSize: 40,
+      iconSize: const Size.square(40),
       iconColor: PlatformInfo.isIOS
           ? CupertinoColors.systemOrange
           : Colors.orange,

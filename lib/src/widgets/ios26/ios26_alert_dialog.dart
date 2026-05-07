@@ -101,8 +101,11 @@ class IOS26AlertDialog extends StatefulWidget {
   /// Optional network image URL to display in the alert.
   final String? iconNetworkUrl;
 
-  /// Optional icon size
-  final double? iconSize;
+  /// Optional icon size.
+  ///
+  /// Images and custom icon views use both width and height. SF Symbols use the
+  /// shorter side as the symbol point size and are constrained to this size.
+  final Size? iconSize;
 
   /// Optional icon color
   final Color? iconColor;
@@ -169,7 +172,11 @@ class _IOS26AlertDialogState extends State<IOS26AlertDialog> {
         if (widget.iconFilePath != null) 'iconFilePath': widget.iconFilePath,
         if (widget.iconNetworkUrl != null)
           'iconNetworkUrl': widget.iconNetworkUrl,
-        if (widget.iconSize != null) 'iconSize': widget.iconSize,
+        if (widget.iconSize != null) ...{
+          'iconWidth': widget.iconSize!.width,
+          'iconHeight': widget.iconSize!.height,
+          'iconSize': widget.iconSize!.shortestSide,
+        },
         if (widget.iconColor != null)
           'iconColor': _colorToARGB(widget.iconColor!),
         if (widget.oneTimeCode != null) 'oneTimeCode': widget.oneTimeCode,

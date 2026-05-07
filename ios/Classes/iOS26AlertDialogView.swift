@@ -80,6 +80,8 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
     private let assetKeyResolver: (String, String?) -> String
     private var alertController: TintAdjustingAlertController?
     private var alertStyle: String = "glass"
+    private let alertTitleTextColor = UIColor(red: 42.0 / 255.0, green: 42.0 / 255.0, blue: 42.0 / 255.0, alpha: 1)
+    private let alertMessageTextColor = UIColor(red: 91.0 / 255.0, green: 91.0 / 255.0, blue: 91.0 / 255.0, alpha: 1)
 
     init(
         frame: CGRect,
@@ -102,7 +104,8 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
         var iconAssetPackage: String? = nil
         var iconFilePath: String? = nil
         var iconNetworkUrl: String? = nil
-        var iconSize: CGFloat? = nil
+        var iconWidth: CGFloat? = nil
+        var iconHeight: CGFloat? = nil
         var iconColor: UIColor? = nil
         var oneTimeCode: String? = nil
         var isDark: Bool = false
@@ -125,7 +128,13 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
             if let iconAssetPackageValue = dict["iconAssetPackage"] as? String { iconAssetPackage = iconAssetPackageValue }
             if let iconFilePathValue = dict["iconFilePath"] as? String { iconFilePath = iconFilePathValue }
             if let iconNetworkUrlValue = dict["iconNetworkUrl"] as? String { iconNetworkUrl = iconNetworkUrlValue }
-            if let iconSizeValue = dict["iconSize"] as? NSNumber { iconSize = CGFloat(truncating: iconSizeValue) }
+            if let iconSizeValue = dict["iconSize"] as? NSNumber {
+                let legacyIconSize = CGFloat(truncating: iconSizeValue)
+                iconWidth = legacyIconSize
+                iconHeight = legacyIconSize
+            }
+            if let iconWidthValue = dict["iconWidth"] as? NSNumber { iconWidth = CGFloat(truncating: iconWidthValue) }
+            if let iconHeightValue = dict["iconHeight"] as? NSNumber { iconHeight = CGFloat(truncating: iconHeightValue) }
             if let ic = dict["iconColor"] as? NSNumber { iconColor = UIColor(argb: ic.intValue) }
             if let otc = dict["oneTimeCode"] as? String { oneTimeCode = otc }
             if let v = dict["isDark"] as? NSNumber { isDark = v.boolValue }
@@ -153,7 +162,8 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
             iconAssetPackage: iconAssetPackage,
             iconFilePath: iconFilePath,
             iconNetworkUrl: iconNetworkUrl,
-            iconSize: iconSize,
+            iconWidth: iconWidth,
+            iconHeight: iconHeight,
             iconColor: iconColor,
             oneTimeCode: oneTimeCode,
             isDark: isDark,
@@ -186,7 +196,8 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
         iconAsset: String?,
         iconAssetPackage: String?,
         iconFilePath: String?,
-        iconSize: CGFloat?,
+        iconWidth: CGFloat?,
+        iconHeight: CGFloat?,
         iconColor: UIColor?
     ) -> UIImage? {
         if let iconAsset = iconAsset {
@@ -201,7 +212,7 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
         }
 
         if let iconName = iconName, var image = UIImage(systemName: iconName) {
-            if let size = iconSize {
+            if let size = iconPointSize(iconWidth: iconWidth, iconHeight: iconHeight) {
                 let config = UIImage.SymbolConfiguration(pointSize: size)
                 image = image.withConfiguration(config)
             }
@@ -214,13 +225,27 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
         return nil
     }
 
+    private func iconPointSize(iconWidth: CGFloat?, iconHeight: CGFloat?) -> CGFloat? {
+        switch (iconWidth, iconHeight) {
+        case let (width?, height?):
+            return min(width, height)
+        case let (width?, nil):
+            return width
+        case let (nil, height?):
+            return height
+        default:
+            return nil
+        }
+    }
+
     private func makeIconImageView(
         iconName: String?,
         iconAsset: String?,
         iconAssetPackage: String?,
         iconFilePath: String?,
         iconNetworkUrl: String?,
-        iconSize: CGFloat?,
+        iconWidth: CGFloat?,
+        iconHeight: CGFloat?,
         iconColor: UIColor?
     ) -> UIImageView? {
         guard hasImageIconSource(
@@ -238,7 +263,8 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
                 iconAsset: iconAsset,
                 iconAssetPackage: iconAssetPackage,
                 iconFilePath: iconFilePath,
-                iconSize: iconSize,
+                iconWidth: iconWidth,
+                iconHeight: iconHeight,
                 iconColor: iconColor
             )
         )
@@ -259,6 +285,62 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
         return imageView
     }
 
+    private func centeredParagraphStyle() -> NSMutableParagraphStyle {
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = .center
+        return paragraphStyle
+    }
+
+    private func titleAttributes() -> [NSAttributedString.Key: Any] {
+        return [
+            .font: UIFont.systemFont(ofSize: 24, weight: .semibold),
+            .foregroundColor: alertTitleTextColor,
+            .paragraphStyle: centeredParagraphStyle()
+        ]
+    }
+
+    private func messageAttributes() -> [NSAttributedString.Key: Any] {
+        return [
+            .font: UIFont.systemFont(ofSize: 18, weight: .regular),
+            .foregroundColor: alertMessageTextColor,
+            .paragraphStyle: centeredParagraphStyle()
+        ]
+    }
+
+    private func applyAlertTextStyles(
+        to alert: UIAlertController,
+        title: String,
+        message: String?
+    ) {
+        alert.setValue(NSAttributedString(string: title, attributes: titleAttributes()), forKey: "attributedTitle")
+
+        if let message = message, !message.isEmpty {
+            alert.setValue(NSAttributedString(string: message, attributes: messageAttributes()), forKey: "attributedMessage")
+        }
+    }
+
+    private func makeTitleLabel(_ title: String) -> UILabel {
+        let titleLabel = UILabel()
+        titleLabel.text = title
+        titleLabel.font = UIFont.systemFont(ofSize: 24, weight: .semibold)
+        titleLabel.textColor = alertTitleTextColor
+        titleLabel.textAlignment = .center
+        titleLabel.numberOfLines = 0
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        return titleLabel
+    }
+
+    private func makeMessageLabel(_ message: String) -> UILabel {
+        let messageLabel = UILabel()
+        messageLabel.text = message
+        messageLabel.font = UIFont.systemFont(ofSize: 18, weight: .regular)
+        messageLabel.textColor = alertMessageTextColor
+        messageLabel.textAlignment = .center
+        messageLabel.numberOfLines = 0
+        messageLabel.translatesAutoresizingMaskIntoConstraints = false
+        return messageLabel
+    }
+
     private func setupAlert(
         title: String,
         message: String?,
@@ -270,7 +352,8 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
         iconAssetPackage: String?,
         iconFilePath: String?,
         iconNetworkUrl: String?,
-        iconSize: CGFloat?,
+        iconWidth: CGFloat?,
+        iconHeight: CGFloat?,
         iconColor: UIColor?,
         oneTimeCode: String?,
         isDark: Bool,
@@ -285,6 +368,7 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
         alertController = TintAdjustingAlertController(title: title, message: message, preferredStyle: .alert)
 
         guard let alert = alertController else { return }
+        applyAlertTextStyles(to: alert, title: title, message: message)
 
         // Apply liquid glass styling for iOS 15+
         if #available(iOS 15.0, *) {
@@ -333,7 +417,8 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
                 iconAssetPackage: iconAssetPackage,
                 iconFilePath: iconFilePath,
                 iconNetworkUrl: iconNetworkUrl,
-                iconSize: iconSize,
+                iconWidth: iconWidth,
+                iconHeight: iconHeight,
                 iconColor: iconColor
             ) {
                 contentViewController.view.addSubview(imageView)
@@ -341,8 +426,8 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
                 constraints.append(contentsOf: [
                     imageView.topAnchor.constraint(equalTo: currentTopAnchor, constant: currentTopConstant),
                     imageView.centerXAnchor.constraint(equalTo: contentViewController.view.centerXAnchor),
-                    imageView.widthAnchor.constraint(equalToConstant: iconSize ?? 32),
-                    imageView.heightAnchor.constraint(equalToConstant: iconSize ?? 32)
+                    imageView.widthAnchor.constraint(equalToConstant: iconWidth ?? 32),
+                    imageView.heightAnchor.constraint(equalToConstant: iconHeight ?? 32)
                 ])
 
                 currentTopAnchor = imageView.bottomAnchor
@@ -350,13 +435,7 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
             }
 
             // 2. Title
-            let titleLabel = UILabel()
-            titleLabel.text = title
-            titleLabel.font = UIFont.boldSystemFont(ofSize: 17)
-            titleLabel.textColor = .label
-            titleLabel.textAlignment = .center
-            titleLabel.numberOfLines = 0
-            titleLabel.translatesAutoresizingMaskIntoConstraints = false
+            let titleLabel = makeTitleLabel(title)
             contentViewController.view.addSubview(titleLabel)
 
             constraints.append(contentsOf: [
@@ -370,13 +449,7 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
 
             // 3. Description (if provided)
             if let messageText = message, !messageText.isEmpty {
-                let messageLabel = UILabel()
-                messageLabel.text = messageText
-                messageLabel.font = UIFont.systemFont(ofSize: 13)
-                messageLabel.textColor = .secondaryLabel
-                messageLabel.textAlignment = .center
-                messageLabel.numberOfLines = 0
-                messageLabel.translatesAutoresizingMaskIntoConstraints = false
+                let messageLabel = makeMessageLabel(messageText)
                 contentViewController.view.addSubview(messageLabel)
 
                 constraints.append(contentsOf: [
@@ -423,51 +496,63 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
             iconAssetPackage: iconAssetPackage,
             iconFilePath: iconFilePath,
             iconNetworkUrl: iconNetworkUrl,
-            iconSize: iconSize,
+            iconWidth: iconWidth,
+            iconHeight: iconHeight,
             iconColor: iconColor
         ) {
             // Icon/image without OTP
             let contentViewController = UIViewController()
+            var constraints: [NSLayoutConstraint] = []
+            var currentTopAnchor: NSLayoutYAxisAnchor = contentViewController.view.topAnchor
+            var currentTopConstant: CGFloat = 8
             contentViewController.view.addSubview(imageView)
 
+            constraints.append(contentsOf: [
+                imageView.topAnchor.constraint(equalTo: currentTopAnchor, constant: currentTopConstant),
+                imageView.centerXAnchor.constraint(equalTo: contentViewController.view.centerXAnchor),
+                imageView.widthAnchor.constraint(equalToConstant: iconWidth ?? 24),
+                imageView.heightAnchor.constraint(equalToConstant: iconHeight ?? 24)
+            ])
+
+            currentTopAnchor = imageView.bottomAnchor
+            currentTopConstant = 12
+
+            let titleLabel = makeTitleLabel(title)
+            contentViewController.view.addSubview(titleLabel)
+
+            constraints.append(contentsOf: [
+                titleLabel.topAnchor.constraint(equalTo: currentTopAnchor, constant: currentTopConstant),
+                titleLabel.leadingAnchor.constraint(equalTo: contentViewController.view.leadingAnchor, constant: 16),
+                titleLabel.trailingAnchor.constraint(equalTo: contentViewController.view.trailingAnchor, constant: -16)
+            ])
+
+            currentTopAnchor = titleLabel.bottomAnchor
+            currentTopConstant = 8
+
             if let messageText = message, !messageText.isEmpty {
-                let messageLabel = UILabel()
-                messageLabel.text = messageText
-                messageLabel.numberOfLines = 0
-                messageLabel.textAlignment = .center
-                messageLabel.font = UIFont.systemFont(ofSize: 13)
-                messageLabel.textColor = .secondaryLabel
-                messageLabel.translatesAutoresizingMaskIntoConstraints = false
+                let messageLabel = makeMessageLabel(messageText)
                 contentViewController.view.addSubview(messageLabel)
 
-                NSLayoutConstraint.activate([
-                    imageView.topAnchor.constraint(equalTo: contentViewController.view.topAnchor, constant: 8),
-                    imageView.centerXAnchor.constraint(equalTo: contentViewController.view.centerXAnchor),
-                    imageView.widthAnchor.constraint(equalToConstant: iconSize ?? 24),
-                    imageView.heightAnchor.constraint(equalToConstant: iconSize ?? 24),
-
-                    messageLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 8),
+                constraints.append(contentsOf: [
+                    messageLabel.topAnchor.constraint(equalTo: currentTopAnchor, constant: currentTopConstant),
                     messageLabel.leadingAnchor.constraint(equalTo: contentViewController.view.leadingAnchor, constant: 16),
                     messageLabel.trailingAnchor.constraint(equalTo: contentViewController.view.trailingAnchor, constant: -16),
-                    messageLabel.bottomAnchor.constraint(equalTo: contentViewController.view.bottomAnchor, constant: -4),
-
-                    contentViewController.view.widthAnchor.constraint(equalToConstant: 250),
-                    contentViewController.view.heightAnchor.constraint(greaterThanOrEqualToConstant: 60)
+                    messageLabel.bottomAnchor.constraint(equalTo: contentViewController.view.bottomAnchor, constant: -4)
                 ])
-
-                alert.message = nil
             } else {
-                NSLayoutConstraint.activate([
-                    imageView.centerXAnchor.constraint(equalTo: contentViewController.view.centerXAnchor),
-                    imageView.centerYAnchor.constraint(equalTo: contentViewController.view.centerYAnchor),
-                    imageView.widthAnchor.constraint(equalToConstant: iconSize ?? 24),
-                    imageView.heightAnchor.constraint(equalToConstant: iconSize ?? 24),
-
-                    contentViewController.view.widthAnchor.constraint(equalToConstant: 250),
-                    contentViewController.view.heightAnchor.constraint(equalToConstant: 60)
-                ])
+                constraints.append(
+                    titleLabel.bottomAnchor.constraint(equalTo: contentViewController.view.bottomAnchor, constant: -4)
+                )
             }
 
+            constraints.append(contentsOf: [
+                contentViewController.view.widthAnchor.constraint(equalToConstant: 250),
+                contentViewController.view.heightAnchor.constraint(greaterThanOrEqualToConstant: 60)
+            ])
+            NSLayoutConstraint.activate(constraints)
+
+            alert.title = nil
+            alert.message = nil
             alert.setValue(contentViewController, forKey: "contentViewController")
         }
 

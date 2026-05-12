@@ -21,6 +21,7 @@ class AdaptiveAppBar {
     this.actions,
     this.leading,
     this.useNativeToolbar = true,
+    this.hideOnScroll = false,
     this.tintColor,
     this.cupertinoNavigationBar,
     this.appBar,
@@ -48,6 +49,12 @@ class AdaptiveAppBar {
   ///
   /// If true, [cupertinoNavigationBar] will be ignored and native toolbar will be shown.
   final bool useNativeToolbar;
+
+  /// Whether the app bar should hide when scrolling down and show when scrolling up.
+  ///
+  /// Currently applies to the iOS 26+ native toolbar path when [useNativeToolbar]
+  /// is true. Other platform renderers keep their existing fixed app bar behavior.
+  final bool hideOnScroll;
 
   /// Tint color for toolbar action buttons (iOS 26+ native toolbar only)
   ///
@@ -78,6 +85,7 @@ class AdaptiveAppBar {
     List<AdaptiveAppBarAction>? actions,
     Widget? leading,
     bool? useNativeToolbar,
+    bool? hideOnScroll,
     Color? tintColor,
     PreferredSizeWidget? cupertinoNavigationBar,
     PreferredSizeWidget? appBar,
@@ -87,6 +95,7 @@ class AdaptiveAppBar {
       actions: actions ?? this.actions,
       leading: leading ?? this.leading,
       useNativeToolbar: useNativeToolbar ?? this.useNativeToolbar,
+      hideOnScroll: hideOnScroll ?? this.hideOnScroll,
       tintColor: tintColor ?? this.tintColor,
       cupertinoNavigationBar:
           cupertinoNavigationBar ?? this.cupertinoNavigationBar,

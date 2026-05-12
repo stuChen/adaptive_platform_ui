@@ -62,6 +62,8 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
     private let assetKeyResolver: (String, String?) -> String
 
     private var isDark: Bool = false
+    private var useSafeArea: Bool = true
+    private var topPadding: CGFloat = 0
     private var perActionTintTags: Set<Int> = []
 
     init(
@@ -82,6 +84,10 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
 
         if let params = args as? [String: Any] {
             isDark = params["isDark"] as? Bool ?? false
+            useSafeArea = params["useSafeArea"] as? Bool ?? true
+            if let n = params["topPadding"] as? NSNumber {
+                topPadding = CGFloat(n.doubleValue)
+            }
         }
 
         super.init()
@@ -156,8 +162,12 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
 
         containerView.addSubview(navigationBar)
 
+        let topAnchor = useSafeArea
+            ? containerView.safeAreaLayoutGuide.topAnchor
+            : containerView.topAnchor
+
         NSLayoutConstraint.activate([
-            navigationBar.topAnchor.constraint(equalTo: containerView.safeAreaLayoutGuide.topAnchor),
+            navigationBar.topAnchor.constraint(equalTo: topAnchor, constant: topPadding),
             navigationBar.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
             navigationBar.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             navigationBar.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)

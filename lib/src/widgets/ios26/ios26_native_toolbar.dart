@@ -19,6 +19,8 @@ class IOS26NativeToolbar extends StatefulWidget {
     this.tintColor,
     this.height = 44.0,
     this.showNativeView = true,
+    this.useSafeArea = true,
+    this.topPadding = 0.0,
   });
 
   final String? title;
@@ -37,6 +39,8 @@ class IOS26NativeToolbar extends StatefulWidget {
 
   final double height;
   final bool showNativeView;
+  final bool useSafeArea;
+  final double topPadding;
 
   @override
   State<IOS26NativeToolbar> createState() => _IOS26NativeToolbarState();
@@ -148,7 +152,9 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
 
   @override
   Widget build(BuildContext context) {
-    final safePadding = MediaQuery.of(context).padding.top;
+    final safePadding = widget.useSafeArea
+        ? MediaQuery.of(context).padding.top
+        : 0.0;
 
     if (defaultTargetPlatform != TargetPlatform.iOS ||
         _requiresFlutterToolbar) {
@@ -164,11 +170,13 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
       if (widget.actions != null && widget.actions!.isNotEmpty)
         'actions': widget.actions!.map((a) => a.toNativeMap()).toList(),
       'isDark': _isDark,
+      'useSafeArea': widget.useSafeArea,
+      'topPadding': widget.topPadding,
       if (widget.tintColor != null) 'tint': _colorToARGB(widget.tintColor!),
     };
 
     return AnimatedContainer(
-      height: widget.height + safePadding,
+      height: widget.height + safePadding + widget.topPadding,
       duration: const Duration(milliseconds: 1000),
       curve: const IOSSpringCurve(),
       child: Stack(
@@ -196,7 +204,7 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
   }
 
   Widget _buildHiddenToolbar(double safePadding) {
-    return SizedBox(height: widget.height + safePadding);
+    return SizedBox(height: widget.height + safePadding + widget.topPadding);
   }
 
   void _onPlatformViewCreated(int id) {
@@ -224,23 +232,26 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
   }
 
   Widget _buildFallbackToolbar() {
-    return CupertinoNavigationBar(
-      middle: widget.title != null ? Text(widget.title!) : null,
-      leading: widget.leading,
-      trailing: widget.actions != null && widget.actions!.isNotEmpty
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: widget.actions!.map((action) {
-                return CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: action.onPressed,
-                  child: action.buildContent(
-                    fallbackIcon: CupertinoIcons.circle,
-                  ),
-                );
-              }).toList(),
-            )
-          : null,
+    return Padding(
+      padding: EdgeInsets.only(top: widget.topPadding),
+      child: CupertinoNavigationBar(
+        middle: widget.title != null ? Text(widget.title!) : null,
+        leading: widget.leading,
+        trailing: widget.actions != null && widget.actions!.isNotEmpty
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: widget.actions!.map((action) {
+                  return CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: action.onPressed,
+                    child: action.buildContent(
+                      fallbackIcon: CupertinoIcons.circle,
+                    ),
+                  );
+                }).toList(),
+              )
+            : null,
+      ),
     );
   }
 }

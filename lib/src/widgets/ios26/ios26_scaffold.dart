@@ -16,7 +16,6 @@ class IOS26Scaffold extends StatefulWidget {
     this.title,
     this.actions,
     this.leading,
-    this.hideAppBarOnScroll = false,
     this.tintColor,
     this.minimizeBehavior = TabBarMinimizeBehavior.automatic,
     this.enableBlur = true,
@@ -30,7 +29,6 @@ class IOS26Scaffold extends StatefulWidget {
   final String? title;
   final List<AdaptiveAppBarAction>? actions;
   final Widget? leading;
-  final bool hideAppBarOnScroll;
   final Color? tintColor;
   final TabBarMinimizeBehavior minimizeBehavior;
   final bool enableBlur;
@@ -44,14 +42,10 @@ class IOS26Scaffold extends StatefulWidget {
 }
 
 class _IOS26ScaffoldState extends State<IOS26Scaffold>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   late AnimationController _tabBarController;
   late Animation<double> _tabBarAnimation;
-  late AnimationController _toolbarController;
-  late Animation<Offset> _toolbarOffsetAnimation;
-  late Animation<double> _toolbarOpacityAnimation;
   bool _isMinimized = false;
-  bool _isToolbarHidden = false;
 
   @override
   void initState() {
@@ -64,77 +58,37 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
       parent: _tabBarController,
       curve: Curves.easeInOut,
     );
-    _toolbarController = AnimationController(
-      duration: const Duration(milliseconds: 200),
-      vsync: this,
-    );
-    final toolbarCurve = CurvedAnimation(
-      parent: _toolbarController,
-      curve: Curves.easeInOut,
-    );
-    _toolbarOffsetAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(0, -1),
-    ).animate(toolbarCurve);
-    _toolbarOpacityAnimation = Tween<double>(
-      begin: 1,
-      end: 0,
-    ).animate(toolbarCurve);
   }
 
   @override
   void dispose() {
     _tabBarController.dispose();
-    _toolbarController.dispose();
     super.dispose();
   }
 
   bool _handleScrollNotification(ScrollNotification notification) {
-    if (notification.metrics.axis != Axis.vertical ||
-        notification is! ScrollUpdateNotification) {
-      return false;
-    }
-
-    final delta = notification.scrollDelta ?? 0;
-    if (delta == 0) {
-      return false;
-    }
-
-    final metrics = notification.metrics;
-    const overscrollTolerance = 50.0;
-    final isOverscrolling =
-        metrics.pixels < (metrics.minScrollExtent + overscrollTolerance) ||
-        metrics.pixels > (metrics.maxScrollExtent - overscrollTolerance);
-    if (isOverscrolling) {
-      return false;
-    }
-
-    if (widget.hideAppBarOnScroll) {
-      if (delta > 0) {
-        _hideToolbar();
-      } else {
-        _showToolbar();
-      }
-    }
-
     if (widget.minimizeBehavior == TabBarMinimizeBehavior.never) {
       return false;
     }
 
-    if (widget.minimizeBehavior == TabBarMinimizeBehavior.onScrollDown ||
-        widget.minimizeBehavior == TabBarMinimizeBehavior.automatic) {
-      // Minimize when scrolling down (positive delta)
-      if (delta > 0 && !_isMinimized) {
-        _minimizeTabBar();
-      } else if (delta < 0 && _isMinimized) {
-        _expandTabBar();
-      }
-    } else if (widget.minimizeBehavior == TabBarMinimizeBehavior.onScrollUp) {
-      // Minimize when scrolling up (negative delta)
-      if (delta < 0 && !_isMinimized) {
-        _minimizeTabBar();
-      } else if (delta > 0 && _isMinimized) {
-        _expandTabBar();
+    if (notification is ScrollUpdateNotification) {
+      final delta = notification.scrollDelta ?? 0;
+
+      if (widget.minimizeBehavior == TabBarMinimizeBehavior.onScrollDown ||
+          widget.minimizeBehavior == TabBarMinimizeBehavior.automatic) {
+        // Minimize when scrolling down (positive delta)
+        if (delta > 0 && !_isMinimized) {
+          _minimizeTabBar();
+        } else if (delta < 0 && _isMinimized) {
+          _expandTabBar();
+        }
+      } else if (widget.minimizeBehavior == TabBarMinimizeBehavior.onScrollUp) {
+        // Minimize when scrolling up (negative delta)
+        if (delta < 0 && !_isMinimized) {
+          _minimizeTabBar();
+        } else if (delta > 0 && _isMinimized) {
+          _expandTabBar();
+        }
       }
     }
 
@@ -152,20 +106,6 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
     if (_isMinimized) {
       _isMinimized = false;
       _tabBarController.reverse();
-    }
-  }
-
-  void _hideToolbar() {
-    if (!_isToolbarHidden) {
-      _isToolbarHidden = true;
-      _toolbarController.forward();
-    }
-  }
-
-  void _showToolbar() {
-    if (_isToolbarHidden) {
-      _isToolbarHidden = false;
-      _toolbarController.reverse();
     }
   }
 
@@ -278,31 +218,23 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
             left: 0,
             right: 0,
             top: 0,
-            child: IgnorePointer(
-              ignoring: _isToolbarHidden,
-              child: FadeTransition(
-                opacity: _toolbarOpacityAnimation,
-                child: SlideTransition(
-                  position: _toolbarOffsetAnimation,
-                  child: IOS26NativeToolbar(
-                    title: widget.title,
-                    leading: widget.leading ?? heroLeading,
-                    showNativeView: showNativeView,
-                    actions: widget.actions,
-                    tintColor: widget.tintColor,
-                    useSafeArea: toolbarUsesSafeArea,
-                    topPadding: toolbarTopPadding,
-                    onActionTap: (index) {
-                      // Call the appropriate action callback
-                      if (widget.actions != null &&
-                          index >= 0 &&
-                          index < widget.actions!.length) {
-                        widget.actions![index].onPressed();
-                      }
-                    },
-                  ),
-                ),
-              ),
+            child: IOS26NativeToolbar(
+              title: widget.title,
+              leading: widget.leading ?? heroLeading,
+              showNativeView: showNativeView,
+              actions: widget.actions,
+              tintColor: widget.tintColor,
+              useSafeArea: toolbarUsesSafeArea,
+              topPadding: toolbarTopPadding,
+              onActionTap: (index) {
+                // Call the appropriate action callback
+                if (widget.actions != null &&
+                    index >= 0 &&
+                    index < widget.actions!.length) {
+                  widget.actions![index].onPressed();
+                }
+              },
+            ),
           ),
         // Tab bar - only show if destinations exist
         if (widget.bottomNavigationBar?.items != null &&
@@ -352,11 +284,11 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
       ],
     );
 
-    // Only listen to scroll when a navigation surface reacts to it.
+    // Only use NotificationListener if tab bar exists (destinations not empty)
+    // This allows scroll notifications to bubble up in single-page scenarios
     final hasBottomNav =
         widget.bottomNavigationBar?.items != null &&
         widget.bottomNavigationBar!.items!.isNotEmpty;
-    final handlesScroll = hasBottomNav || widget.hideAppBarOnScroll;
 
     return CupertinoPageScaffold(
       // When a native tab bar is present it sits in Positioned(bottom: 0)
@@ -365,7 +297,7 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
       // keyboard window (higher z-order) covers the tab bar naturally.
       resizeToAvoidBottomInset:
           widget.resizeToAvoidBottomInset ?? !hasBottomNav,
-      child: handlesScroll
+      child: hasBottomNav
           ? NotificationListener<ScrollNotification>(
               onNotification: _handleScrollNotification,
               child: stackContent,

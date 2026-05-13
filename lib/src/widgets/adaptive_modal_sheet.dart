@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 
 import '../platform/platform_info.dart';
 
+const Duration _modalSheetEnterDuration = Duration(milliseconds: 350);
+const Duration _modalSheetExitDuration = Duration(milliseconds: 250);
+const Cubic _modalSheetEnterCurve = Cubic(0.1, 0.8, 0.2, 1.0);
+const Cubic _modalSheetExitCurve = Cubic(0.5, 0, 0.7, 0.2);
+
 /// Sheet detents that mirror SwiftUI presentation detents.
 enum AdaptivePresentationDetent {
   /// Roughly half-height sheet.
@@ -125,10 +130,10 @@ class _AdaptiveModalSheetRoute<T> extends PopupRoute<T> {
   String get barrierLabel => _barrierLabel;
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 320);
+  Duration get transitionDuration => _modalSheetEnterDuration;
 
   @override
-  Duration get reverseTransitionDuration => const Duration(milliseconds: 240);
+  Duration get reverseTransitionDuration => _modalSheetExitDuration;
 
   @override
   Widget buildPage(
@@ -184,15 +189,16 @@ class _AdaptiveModalSheetContainer extends StatelessWidget {
     final height = _sheetHeight(mediaQuery);
     final effectiveBackgroundColor =
         backgroundColor ?? _defaultBackgroundColor(context);
+    final isClosing = animation.status == AnimationStatus.reverse;
     final curvedAnimation = CurvedAnimation(
       parent: animation,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic,
+      curve: isClosing ? _modalSheetExitCurve : _modalSheetEnterCurve,
+      reverseCurve: isClosing ? _modalSheetEnterCurve : _modalSheetExitCurve,
     );
 
     return AnimatedPadding(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
+      duration: _modalSheetExitDuration,
+      curve: _modalSheetEnterCurve,
       padding: EdgeInsets.only(bottom: viewInsets.bottom, top: 20),
       child: Align(
         alignment: Alignment.bottomCenter,

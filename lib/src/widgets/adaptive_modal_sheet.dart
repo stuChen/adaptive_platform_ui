@@ -39,6 +39,7 @@ class AdaptiveModalSheet {
     bool showDragIndicator = false,
     double cornerRadius = 34,
     bool barrierDismissible = true,
+    bool enableDrag = true,
     bool useRootNavigator = false,
     bool useSafeArea = true,
     double navigationBarTopPadding = 10,
@@ -56,6 +57,7 @@ class AdaptiveModalSheet {
         showDragIndicator: showDragIndicator,
         cornerRadius: cornerRadius,
         barrierDismissible: barrierDismissible,
+        enableDrag: enableDrag,
         useSafeArea: useSafeArea,
         navigationBarTopPadding: navigationBarTopPadding,
         backgroundColor: backgroundColor,
@@ -102,6 +104,7 @@ class _AdaptiveModalSheetRoute<T> extends PopupRoute<T> {
     required this.showDragIndicator,
     required this.cornerRadius,
     required this.barrierDismissible,
+    required this.enableDrag,
     required this.useSafeArea,
     required this.navigationBarTopPadding,
     required this.backgroundColor,
@@ -117,6 +120,7 @@ class _AdaptiveModalSheetRoute<T> extends PopupRoute<T> {
   final double cornerRadius;
   @override
   final bool barrierDismissible;
+  final bool enableDrag;
   final bool useSafeArea;
   final double navigationBarTopPadding;
   final Color? backgroundColor;
@@ -146,6 +150,7 @@ class _AdaptiveModalSheetRoute<T> extends PopupRoute<T> {
       presentationDetent: _largestDetent(),
       showDragIndicator: showDragIndicator,
       cornerRadius: cornerRadius,
+      enableDrag: enableDrag,
       useSafeArea: useSafeArea,
       navigationBarTopPadding: navigationBarTopPadding,
       backgroundColor: backgroundColor,
@@ -161,12 +166,13 @@ class _AdaptiveModalSheetRoute<T> extends PopupRoute<T> {
   }
 }
 
-class _AdaptiveModalSheetContainer extends StatelessWidget {
+class _AdaptiveModalSheetContainer extends StatefulWidget {
   const _AdaptiveModalSheetContainer({
     required this.animation,
     required this.presentationDetent,
     required this.showDragIndicator,
     required this.cornerRadius,
+    required this.enableDrag,
     required this.useSafeArea,
     required this.navigationBarTopPadding,
     required this.backgroundColor,
@@ -177,21 +183,78 @@ class _AdaptiveModalSheetContainer extends StatelessWidget {
   final AdaptivePresentationDetent presentationDetent;
   final bool showDragIndicator;
   final double cornerRadius;
+  final bool enableDrag;
   final bool useSafeArea;
   final double navigationBarTopPadding;
   final Color? backgroundColor;
   final Widget child;
 
   @override
+  State<_AdaptiveModalSheetContainer> createState() =>
+      _AdaptiveModalSheetContainerState();
+}
+
+class _AdaptiveModalSheetContainerState
+    extends State<_AdaptiveModalSheetContainer> {
+  static const double _dismissDistance = 96;
+  static const double _dismissVelocity = 700;
+  static const Duration _dragResetDuration = Duration(milliseconds: 220);
+
+  double _dragOffset = 0;
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    if (!widget.enableDrag) return;
+
+    final nextOffset = (_dragOffset + details.delta.dy).clamp(
+      0.0,
+      double.infinity,
+    );
+
+    if (nextOffset == _dragOffset) return;
+
+    setState(() {
+      _dragOffset = nextOffset;
+    });
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+    if (!widget.enableDrag) return;
+
+    final shouldDismiss =
+        _dragOffset >= _dismissDistance ||
+        (details.primaryVelocity != null &&
+            details.primaryVelocity! >= _dismissVelocity);
+
+    if (shouldDismiss) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+
+    if (_dragOffset == 0) return;
+
+    setState(() {
+      _dragOffset = 0;
+    });
+  }
+
+  void _handleDragCancel() {
+    if (!widget.enableDrag || _dragOffset == 0) return;
+
+    setState(() {
+      _dragOffset = 0;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final viewInsets = mediaQuery.viewInsets;
-    final height = _sheetHeight(mediaQuery);
+    final maxHeight = _sheetHeight(mediaQuery);
     final effectiveBackgroundColor =
-        backgroundColor ?? _defaultBackgroundColor(context);
-    final isClosing = animation.status == AnimationStatus.reverse;
+        widget.backgroundColor ?? _defaultBackgroundColor(context);
+    final isClosing = widget.animation.status == AnimationStatus.reverse;
     final curvedAnimation = CurvedAnimation(
-      parent: animation,
+      parent: widget.animation,
       curve: isClosing ? _modalSheetExitCurve : _modalSheetEnterCurve,
       reverseCurve: isClosing ? _modalSheetEnterCurve : _modalSheetExitCurve,
     );
@@ -199,7 +262,7 @@ class _AdaptiveModalSheetContainer extends StatelessWidget {
     return AnimatedPadding(
       duration: _modalSheetExitDuration,
       curve: _modalSheetEnterCurve,
-      padding: EdgeInsets.only(bottom: viewInsets.bottom, top: 20),
+      padding: EdgeInsets.only(bottom: viewInsets.bottom),
       child: Align(
         alignment: Alignment.bottomCenter,
         child: SlideTransition(
@@ -207,26 +270,45 @@ class _AdaptiveModalSheetContainer extends StatelessWidget {
             begin: const Offset(0, 1),
             end: Offset.zero,
           ).animate(curvedAnimation),
-          child: SizedBox(
-            height: height,
+          child: AnimatedContainer(
+            duration: _dragOffset == 0 ? _dragResetDuration : Duration.zero,
+            curve: _modalSheetEnterCurve,
+            transform: Matrix4.translationValues(0, _dragOffset, 0),
             width: double.infinity,
-            child: ClipRRect(
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(cornerRadius),
-              ),
-              child: Material(
-                color: effectiveBackgroundColor,
-                child: Column(
-                  children: [
-                    if (showDragIndicator) const _ModalSheetDragIndicator(),
-                    Expanded(
-                      child: _ModalSheetMediaQuery(
-                        useSafeArea: useSafeArea,
-                        navigationBarTopPadding: navigationBarTopPadding,
-                        child: child,
-                      ),
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onVerticalDragUpdate: widget.enableDrag
+                  ? _handleDragUpdate
+                  : null,
+              onVerticalDragEnd: widget.enableDrag ? _handleDragEnd : null,
+              onVerticalDragCancel: widget.enableDrag
+                  ? _handleDragCancel
+                  : null,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: maxHeight),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(widget.cornerRadius),
+                  ),
+                  child: Material(
+                    color: effectiveBackgroundColor,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.showDragIndicator)
+                          const _ModalSheetDragIndicator(),
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: _ModalSheetMediaQuery(
+                            useSafeArea: widget.useSafeArea,
+                            navigationBarTopPadding:
+                                widget.navigationBarTopPadding,
+                            child: widget.child,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -237,10 +319,11 @@ class _AdaptiveModalSheetContainer extends StatelessWidget {
   }
 
   double _sheetHeight(MediaQueryData mediaQuery) {
-    final topGap = presentationDetent == AdaptivePresentationDetent.large
+    final topGap = widget.presentationDetent == AdaptivePresentationDetent.large
         ? 8.0
         : mediaQuery.size.height * 0.5;
-    final topPadding = presentationDetent == AdaptivePresentationDetent.large
+    final topPadding =
+        widget.presentationDetent == AdaptivePresentationDetent.large
         ? mediaQuery.viewPadding.top
         : 0.0;
 

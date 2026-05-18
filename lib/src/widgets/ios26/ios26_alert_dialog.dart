@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -60,6 +61,8 @@ class AlertAction {
 
 /// Native iOS 26 alert dialog implementation using platform views
 class IOS26AlertDialog extends StatefulWidget {
+  static Future<void> Function()? _activeDismissHandler;
+
   /// Creates an iOS 26 alert dialog
   const IOS26AlertDialog({
     super.key,
@@ -118,6 +121,16 @@ class IOS26AlertDialog extends StatefulWidget {
 
   @override
   State<IOS26AlertDialog> createState() => _IOS26AlertDialogState();
+
+  static Future<bool> dismissActive() async {
+    final dismissHandler = _activeDismissHandler;
+    if (dismissHandler == null) {
+      return false;
+    }
+
+    await dismissHandler();
+    return true;
+  }
 }
 
 class _IOS26AlertDialogState extends State<IOS26AlertDialog> {
@@ -137,7 +150,15 @@ class _IOS26AlertDialogState extends State<IOS26AlertDialog> {
 
   @override
   void dispose() {
-    _channel?.setMethodCallHandler(null);
+    final channel = _channel;
+    _channel = null;
+    if (identical(IOS26AlertDialog._activeDismissHandler, _dismissNativeAlert)) {
+      IOS26AlertDialog._activeDismissHandler = null;
+    }
+    if (channel != null) {
+      unawaited(channel.invokeMethod<void>('dismiss'));
+      channel.setMethodCallHandler(null);
+    }
     super.dispose();
   }
 
@@ -238,9 +259,18 @@ class _IOS26AlertDialogState extends State<IOS26AlertDialog> {
   void _onCreated(int id) {
     final ch = MethodChannel('adaptive_platform_ui/ios26_alert_dialog_$id');
     _channel = ch;
+    IOS26AlertDialog._activeDismissHandler = _dismissNativeAlert;
     ch.setMethodCallHandler(_onMethodCall);
     _lastTint = _effectiveTint != null ? _colorToARGB(_effectiveTint!) : null;
     _lastIsDark = _isDark;
+  }
+
+  Future<void> _dismissNativeAlert() async {
+    final channel = _channel;
+    if (channel == null) {
+      return;
+    }
+    await channel.invokeMethod<void>('dismiss');
   }
 
   Future<dynamic> _onMethodCall(MethodCall call) async {

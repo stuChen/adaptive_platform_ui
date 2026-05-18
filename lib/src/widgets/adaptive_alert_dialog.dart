@@ -71,6 +71,8 @@ class _AdaptiveAlertIconSource {
 class AdaptiveAlertDialog {
   AdaptiveAlertDialog._();
 
+  static NavigatorState? _activeNavigator;
+
   static const TextStyle _alertTitleStyle = TextStyle(
     color: Color(0xFF2A2A2A),
     fontSize: 24,
@@ -256,6 +258,36 @@ class AdaptiveAlertDialog {
     return iconMap[sfSymbol] ?? CupertinoIcons.circle;
   }
 
+  static Future<T?> _trackDialogLifecycle<T>({
+    required NavigatorState navigator,
+    required Future<T?> future,
+  }) {
+    _activeNavigator = navigator;
+    return future.whenComplete(() {
+      if (identical(_activeNavigator, navigator)) {
+        _activeNavigator = null;
+      }
+    });
+  }
+
+  /// Dismisses the currently visible adaptive alert dialog, if any.
+  static Future<bool> dismiss({BuildContext? context}) async {
+    final fallbackNavigator = context != null
+        ? Navigator.of(context, rootNavigator: true)
+        : null;
+    var dismissed = false;
+
+    dismissed = await IOS26AlertDialog.dismissActive() || dismissed;
+
+    final navigator = _activeNavigator ?? fallbackNavigator;
+
+    if (navigator != null) {
+      dismissed = await navigator.maybePop() || dismissed;
+    }
+
+    return dismissed;
+  }
+
   /// Shows a standard adaptive alert dialog
   ///
   /// The [icon] parameter accepts:
@@ -281,6 +313,7 @@ class AdaptiveAlertDialog {
     Color? iconColor,
     String? oneTimeCode,
   }) {
+    final navigator = Navigator.of(context, rootNavigator: true);
     final iconSource = _resolveIconSource(
       icon: icon,
       iconAsset: iconAsset,
@@ -289,31 +322,36 @@ class AdaptiveAlertDialog {
 
     // iOS 26+ - Use native iOS 26 alert dialog
     if (PlatformInfo.isIOS26OrHigher()) {
-      return showCupertinoDialog<void>(
-        context: context,
-        barrierColor: CupertinoColors.transparent,
-        builder: (context) => IOS26AlertDialog(
-          title: title,
-          message: message,
-          actions: actions,
-          icon: iconSource.symbolName,
-          iconAsset: iconSource.assetPath,
-          iconAssetPackage: iconSource.assetPackage,
-          iconFilePath: iconSource.filePath,
-          iconNetworkUrl: iconSource.networkUrl,
-          iconSize: iconSize,
-          iconColor: iconColor,
-          oneTimeCode: oneTimeCode,
-          input: null, // No input for standard dialog
+      return _trackDialogLifecycle<void>(
+        navigator: navigator,
+        future: showCupertinoDialog<void>(
+          context: context,
+          barrierColor: CupertinoColors.transparent,
+          builder: (context) => IOS26AlertDialog(
+            title: title,
+            message: message,
+            actions: actions,
+            icon: iconSource.symbolName,
+            iconAsset: iconSource.assetPath,
+            iconAssetPackage: iconSource.assetPackage,
+            iconFilePath: iconSource.filePath,
+            iconNetworkUrl: iconSource.networkUrl,
+            iconSize: iconSize,
+            iconColor: iconColor,
+            oneTimeCode: oneTimeCode,
+            input: null, // No input for standard dialog
+          ),
         ),
       );
     }
 
     // iOS 18 and below - Use CupertinoAlertDialog
     if (PlatformInfo.isIOS) {
-      return showCupertinoDialog<void>(
-        context: context,
-        builder: (context) {
+      return _trackDialogLifecycle<void>(
+        navigator: navigator,
+        future: showCupertinoDialog<void>(
+          context: context,
+          builder: (context) {
           Widget? contentWidget;
           final hasLegacyIcon = iconSource.hasVisual;
           final hasOtpCode = oneTimeCode != null;
@@ -390,8 +428,9 @@ class AdaptiveAlertDialog {
                 child: Text(action.title),
               );
             }).toList(),
-          );
-        },
+            );
+          },
+        ),
       );
     }
 
@@ -427,6 +466,7 @@ class AdaptiveAlertDialog {
     Size? iconSize,
     Color? iconColor,
   }) {
+    final navigator = Navigator.of(context, rootNavigator: true);
     final iconSource = _resolveIconSource(
       icon: icon,
       iconAsset: iconAsset,
@@ -435,21 +475,24 @@ class AdaptiveAlertDialog {
 
     // iOS 26+ - Use native iOS 26 alert dialog with input
     if (PlatformInfo.isIOS26OrHigher()) {
-      return showCupertinoDialog<String?>(
-        context: context,
-        builder: (context) => IOS26AlertDialog(
-          title: title,
-          message: message,
-          actions: actions,
-          icon: iconSource.symbolName,
-          iconAsset: iconSource.assetPath,
-          iconAssetPackage: iconSource.assetPackage,
-          iconFilePath: iconSource.filePath,
-          iconNetworkUrl: iconSource.networkUrl,
-          iconSize: iconSize,
-          iconColor: iconColor,
-          oneTimeCode: null,
-          input: input,
+      return _trackDialogLifecycle<String?>(
+        navigator: navigator,
+        future: showCupertinoDialog<String?>(
+          context: context,
+          builder: (context) => IOS26AlertDialog(
+            title: title,
+            message: message,
+            actions: actions,
+            icon: iconSource.symbolName,
+            iconAsset: iconSource.assetPath,
+            iconAssetPackage: iconSource.assetPackage,
+            iconFilePath: iconSource.filePath,
+            iconNetworkUrl: iconSource.networkUrl,
+            iconSize: iconSize,
+            iconColor: iconColor,
+            oneTimeCode: null,
+            input: input,
+          ),
         ),
       );
     }
@@ -458,9 +501,11 @@ class AdaptiveAlertDialog {
     if (PlatformInfo.isIOS) {
       final textController = TextEditingController(text: input.initialValue);
 
-      return showCupertinoDialog<String?>(
-        context: context,
-        builder: (context) {
+      return _trackDialogLifecycle<String?>(
+        navigator: navigator,
+        future: showCupertinoDialog<String?>(
+          context: context,
+          builder: (context) {
           Widget? contentWidget;
 
           // Build custom content with text field
@@ -519,8 +564,9 @@ class AdaptiveAlertDialog {
                 child: Text(action.title),
               );
             }).toList(),
-          );
-        },
+            );
+          },
+        ),
       );
     }
 
@@ -561,9 +607,11 @@ class AdaptiveAlertDialog {
       assetPackage: assetPackage,
     );
 
-    return showDialog<T>(
-      context: context,
-      builder: (context) {
+    return _trackDialogLifecycle<T>(
+      navigator: Navigator.of(context, rootNavigator: true),
+      future: showDialog<T>(
+        context: context,
+        builder: (context) {
         // Build custom content if icon, OTP, or textfield is present
         Widget? contentWidget;
         final hasMaterialIcon = iconSource.hasVisual;
@@ -706,7 +754,8 @@ class AdaptiveAlertDialog {
               ),
           ],
         );
-      },
+        },
+      ),
     );
   }
 }

@@ -82,6 +82,7 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
     private var alertStyle: String = "glass"
     private let alertTitleTextColor = UIColor(red: 42.0 / 255.0, green: 42.0 / 255.0, blue: 42.0 / 255.0, alpha: 1)
     private let alertMessageTextColor = UIColor(red: 91.0 / 255.0, green: 91.0 / 255.0, blue: 91.0 / 255.0, alpha: 1)
+    private var isDismissing = false
 
     init(
         frame: CGRect,
@@ -743,8 +744,37 @@ class iOS26AlertDialogView: NSObject, FlutterPlatformView {
             }
             result(nil)
 
+        case "dismiss":
+            dismissAlert(animated: true)
+            result(nil)
+
         default:
             result(FlutterMethodNotImplemented)
+        }
+    }
+
+    private func dismissAlert(animated: Bool) {
+        guard !isDismissing, let alert = alertController else { return }
+
+        guard alert.presentingViewController != nil else {
+            alertController = nil
+            return
+        }
+
+        isDismissing = true
+        DispatchQueue.main.async { [weak self, weak alert] in
+            guard let self = self, let alert = alert else { return }
+
+            if alert.presentingViewController == nil {
+                self.isDismissing = false
+                self.alertController = nil
+                return
+            }
+
+            alert.dismiss(animated: animated) { [weak self] in
+                self?.isDismissing = false
+                self?.alertController = nil
+            }
         }
     }
 

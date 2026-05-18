@@ -5,6 +5,8 @@ import '../platform/platform_info.dart';
 
 const Duration _modalSheetEnterDuration = Duration(milliseconds: 350);
 const Duration _modalSheetExitDuration = Duration(milliseconds: 250);
+const Cubic _modalSheetEnterCurve = Cubic(0.1, 0.8, 0.2, 1.0);
+const Cubic _modalSheetExitCurve = Cubic(0.5, 0, 0.7, 0.2);
 
 /// Sheet detents that mirror SwiftUI presentation detents.
 enum AdaptivePresentationDetent {
@@ -124,7 +126,6 @@ class _AdaptiveModalSheetRoute<T> extends PopupRoute<T> {
   final Color? backgroundColor;
   final Color _barrierColor;
   final String _barrierLabel;
-  AnimationController? _animationController;
 
   @override
   Color get barrierColor => _barrierColor;
@@ -139,39 +140,21 @@ class _AdaptiveModalSheetRoute<T> extends PopupRoute<T> {
   Duration get reverseTransitionDuration => _modalSheetExitDuration;
 
   @override
-  AnimationController createAnimationController() {
-    assert(_animationController == null);
-    _animationController = BottomSheet.createAnimationController(
-      navigator!.overlay!,
-    );
-    _animationController!.duration = transitionDuration;
-    _animationController!.reverseDuration = reverseTransitionDuration;
-    return _animationController!;
-  }
-
-  @override
   Widget buildPage(
     BuildContext context,
     Animation<double> animation,
     Animation<double> secondaryAnimation,
   ) {
-    return MediaQuery.removePadding(
-      context: context,
-      removeTop: true,
-      child: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: _AdaptiveModalBottomSheet<T>(
-          route: this,
-          showDragIndicator: showDragIndicator,
-          cornerRadius: cornerRadius,
-          enableDrag: enableDrag,
-          useSafeArea: useSafeArea,
-          navigationBarTopPadding: navigationBarTopPadding,
-          backgroundColor: backgroundColor,
-        ),
-      ),
+    return _AdaptiveModalSheetContainer(
+      animation: animation,
+      presentationDetent: _largestDetent(),
+      showDragIndicator: showDragIndicator,
+      cornerRadius: cornerRadius,
+      enableDrag: enableDrag,
+      useSafeArea: useSafeArea,
+      navigationBarTopPadding: navigationBarTopPadding,
+      backgroundColor: backgroundColor,
+      child: builder(context),
     );
   }
 
@@ -181,212 +164,172 @@ class _AdaptiveModalSheetRoute<T> extends PopupRoute<T> {
     }
     return AdaptivePresentationDetent.medium;
   }
-
-  double _sheetHeight(MediaQueryData mediaQuery) {
-    final topGap = _largestDetent() == AdaptivePresentationDetent.large
-        ? 8.0
-        : mediaQuery.size.height * 0.5;
-    final topPadding = _largestDetent() == AdaptivePresentationDetent.large
-        ? mediaQuery.viewPadding.top
-        : 0.0;
-
-    return (mediaQuery.size.height - topPadding - topGap)
-        .clamp(0.0, mediaQuery.size.height)
-        .toDouble();
-  }
 }
 
-class _AdaptiveModalBottomSheet<T> extends StatefulWidget {
-  const _AdaptiveModalBottomSheet({
-    required this.route,
+class _AdaptiveModalSheetContainer extends StatefulWidget {
+  const _AdaptiveModalSheetContainer({
+    required this.animation,
+    required this.presentationDetent,
     required this.showDragIndicator,
     required this.cornerRadius,
     required this.enableDrag,
     required this.useSafeArea,
     required this.navigationBarTopPadding,
     required this.backgroundColor,
+    required this.child,
   });
 
-  final _AdaptiveModalSheetRoute<T> route;
+  final Animation<double> animation;
+  final AdaptivePresentationDetent presentationDetent;
   final bool showDragIndicator;
   final double cornerRadius;
   final bool enableDrag;
   final bool useSafeArea;
   final double navigationBarTopPadding;
   final Color? backgroundColor;
-
-  @override
-  State<_AdaptiveModalBottomSheet<T>> createState() =>
-      _AdaptiveModalBottomSheetState<T>();
-}
-
-class _AdaptiveModalBottomSheetState<T>
-    extends State<_AdaptiveModalBottomSheet<T>> {
-  static const double _dismissDistance = 96;
-  static const double _dismissVelocity = 700;
-
-  double? _dragStartDy;
-
-  String _routeLabel(MaterialLocalizations localizations) {
-    final platform = Theme.of(context).platform;
-    if (platform == TargetPlatform.android ||
-        platform == TargetPlatform.fuchsia) {
-      return localizations.dialogLabel;
-    }
-    return '';
-  }
-
-  void _handleDragStart(DragStartDetails details) {
-    _dragStartDy = details.globalPosition.dy;
-  }
-
-  void _handleDragEnd(DragEndDetails details, {required bool isClosing}) {
-    final dragStartDy = _dragStartDy;
-    _dragStartDy = null;
-
-    if (isClosing || dragStartDy == null || !widget.route.isCurrent) {
-      return;
-    }
-
-    final dragDistance = details.globalPosition.dy - dragStartDy;
-    final isDismissGesture =
-        dragDistance >= _dismissDistance ||
-        details.velocity.pixelsPerSecond.dy >= _dismissVelocity;
-
-    if (isDismissGesture) {
-      Navigator.pop(context);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    assert(debugCheckHasMediaQuery(context));
-    assert(debugCheckHasMaterialLocalizations(context));
-
-    final mediaQuery = MediaQuery.of(context);
-    final localizations = MaterialLocalizations.of(context);
-    final routeLabel = _routeLabel(localizations);
-
-    return AnimatedBuilder(
-      animation: widget.route.animation!,
-      builder: (context, child) {
-        final animationValue = mediaQuery.accessibleNavigation
-            ? 1.0
-            : widget.route.animation!.value;
-
-        return Semantics(
-          scopesRoute: true,
-          namesRoute: true,
-          label: routeLabel,
-          explicitChildNodes: true,
-          child: ClipRect(
-            child: CustomSingleChildLayout(
-              delegate: _AdaptiveModalSheetLayout(
-                animationValue,
-                widget.route._sheetHeight(mediaQuery),
-              ),
-              child: BottomSheet(
-                animationController: widget.route._animationController,
-                onClosing: () {
-                  if (widget.route.isCurrent) {
-                    Navigator.pop(context);
-                  }
-                },
-                builder: (sheetContext) {
-                  return _AdaptiveModalSheetContent(
-                    showDragIndicator: widget.showDragIndicator,
-                    cornerRadius: widget.cornerRadius,
-                    useSafeArea: widget.useSafeArea,
-                    navigationBarTopPadding: widget.navigationBarTopPadding,
-                    backgroundColor: widget.backgroundColor,
-                    child: widget.route.builder(sheetContext),
-                  );
-                },
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                enableDrag: widget.enableDrag,
-                onDragStart: _handleDragStart,
-                onDragEnd: _handleDragEnd,
-                clipBehavior: Clip.none,
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _AdaptiveModalSheetLayout extends SingleChildLayoutDelegate {
-  const _AdaptiveModalSheetLayout(this.progress, this.maxHeight);
-
-  final double progress;
-  final double maxHeight;
-
-  @override
-  BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
-    return BoxConstraints(
-      minWidth: constraints.maxWidth,
-      maxWidth: constraints.maxWidth,
-      minHeight: 0,
-      maxHeight: maxHeight,
-    );
-  }
-
-  @override
-  Offset getPositionForChild(Size size, Size childSize) {
-    return Offset(0, size.height - childSize.height * progress);
-  }
-
-  @override
-  bool shouldRelayout(_AdaptiveModalSheetLayout oldDelegate) {
-    return progress != oldDelegate.progress ||
-        maxHeight != oldDelegate.maxHeight;
-  }
-}
-
-class _AdaptiveModalSheetContent extends StatelessWidget {
-  const _AdaptiveModalSheetContent({
-    required this.showDragIndicator,
-    required this.cornerRadius,
-    required this.useSafeArea,
-    required this.navigationBarTopPadding,
-    required this.backgroundColor,
-    required this.child,
-  });
-
-  final bool showDragIndicator;
-  final double cornerRadius;
-  final bool useSafeArea;
-  final double navigationBarTopPadding;
-  final Color? backgroundColor;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    final sheetChild = _ModalSheetMediaQuery(
-      useSafeArea: useSafeArea,
-      navigationBarTopPadding: navigationBarTopPadding,
-      child: child,
+  State<_AdaptiveModalSheetContainer> createState() =>
+      _AdaptiveModalSheetContainerState();
+}
+
+class _AdaptiveModalSheetContainerState
+    extends State<_AdaptiveModalSheetContainer> {
+  static const double _dismissDistance = 96;
+  static const double _dismissVelocity = 700;
+  static const Duration _dragResetDuration = Duration(milliseconds: 220);
+
+  double _dragOffset = 0;
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    if (!widget.enableDrag) return;
+
+    final nextOffset = (_dragOffset + details.delta.dy).clamp(
+      0.0,
+      double.infinity,
     );
 
-    final content = showDragIndicator
-        ? Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const _ModalSheetDragIndicator(),
-              Flexible(fit: FlexFit.loose, child: sheetChild),
-            ],
-          )
-        : sheetChild;
+    if (nextOffset == _dragOffset) return;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(cornerRadius)),
-      child: Material(
-        color: backgroundColor ?? _defaultBackgroundColor(context),
-        child: content,
+    setState(() {
+      _dragOffset = nextOffset;
+    });
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+    if (!widget.enableDrag) return;
+
+    final shouldDismiss =
+        _dragOffset >= _dismissDistance ||
+        (details.primaryVelocity != null &&
+            details.primaryVelocity! >= _dismissVelocity);
+
+    if (shouldDismiss) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+
+    if (_dragOffset == 0) return;
+
+    setState(() {
+      _dragOffset = 0;
+    });
+  }
+
+  void _handleDragCancel() {
+    if (!widget.enableDrag || _dragOffset == 0) return;
+
+    setState(() {
+      _dragOffset = 0;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final viewInsets = mediaQuery.viewInsets;
+    final maxHeight = _sheetHeight(mediaQuery);
+    final effectiveBackgroundColor =
+        widget.backgroundColor ?? _defaultBackgroundColor(context);
+    final isClosing = widget.animation.status == AnimationStatus.reverse;
+    final curvedAnimation = CurvedAnimation(
+      parent: widget.animation,
+      curve: isClosing ? _modalSheetExitCurve : _modalSheetEnterCurve,
+      reverseCurve: isClosing ? _modalSheetEnterCurve : _modalSheetExitCurve,
+    );
+
+    return AnimatedPadding(
+      duration: _modalSheetExitDuration,
+      curve: _modalSheetEnterCurve,
+      padding: EdgeInsets.only(bottom: viewInsets.bottom),
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 1),
+            end: Offset.zero,
+          ).animate(curvedAnimation),
+          child: AnimatedContainer(
+            duration: _dragOffset == 0 ? _dragResetDuration : Duration.zero,
+            curve: _modalSheetEnterCurve,
+            transform: Matrix4.translationValues(0, _dragOffset, 0),
+            width: double.infinity,
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onVerticalDragUpdate: widget.enableDrag
+                  ? _handleDragUpdate
+                  : null,
+              onVerticalDragEnd: widget.enableDrag ? _handleDragEnd : null,
+              onVerticalDragCancel: widget.enableDrag
+                  ? _handleDragCancel
+                  : null,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: maxHeight),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(widget.cornerRadius),
+                  ),
+                  child: Material(
+                    color: effectiveBackgroundColor,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.showDragIndicator)
+                          const _ModalSheetDragIndicator(),
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: _ModalSheetMediaQuery(
+                            useSafeArea: widget.useSafeArea,
+                            navigationBarTopPadding:
+                                widget.navigationBarTopPadding,
+                            child: widget.child,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
+  }
+
+  double _sheetHeight(MediaQueryData mediaQuery) {
+    final topGap = widget.presentationDetent == AdaptivePresentationDetent.large
+        ? 8.0
+        : mediaQuery.size.height * 0.5;
+    final topPadding =
+        widget.presentationDetent == AdaptivePresentationDetent.large
+        ? mediaQuery.viewPadding.top
+        : 0.0;
+
+    return (mediaQuery.size.height - topPadding - topGap)
+        .clamp(0.0, mediaQuery.size.height)
+        .toDouble();
   }
 
   Color _defaultBackgroundColor(BuildContext context) {

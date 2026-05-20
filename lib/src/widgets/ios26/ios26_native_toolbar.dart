@@ -152,8 +152,11 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
     final safePadding = widget.useSafeArea
-        ? MediaQuery.of(context).padding.top
+        ? (mediaQuery.viewPadding.top > 0
+              ? mediaQuery.viewPadding.top
+              : mediaQuery.padding.top)
         : 0.0;
 
     if (defaultTargetPlatform != TargetPlatform.iOS ||

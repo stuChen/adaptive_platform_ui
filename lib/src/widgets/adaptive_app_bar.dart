@@ -21,6 +21,7 @@ class AdaptiveAppBar {
     this.actions,
     this.leading,
     this.useNativeToolbar = true,
+    this.topPadding = 0,
     this.tintColor,
     this.cupertinoNavigationBar,
     this.appBar,
@@ -48,6 +49,13 @@ class AdaptiveAppBar {
   ///
   /// If true, [cupertinoNavigationBar] will be ignored and native toolbar will be shown.
   final bool useNativeToolbar;
+
+  /// Extra spacing above the app bar content.
+  ///
+  /// This is especially useful for sheet-hosted pages that still use
+  /// `showCupertinoSheet`, where there is no [AdaptiveModalSheetScope] to
+  /// inject additional toolbar inset automatically.
+  final double topPadding;
 
   /// Tint color for toolbar action buttons (iOS 26+ native toolbar only)
   ///
@@ -78,6 +86,7 @@ class AdaptiveAppBar {
     List<AdaptiveAppBarAction>? actions,
     Widget? leading,
     bool? useNativeToolbar,
+    double? topPadding,
     Color? tintColor,
     PreferredSizeWidget? cupertinoNavigationBar,
     PreferredSizeWidget? appBar,
@@ -87,6 +96,7 @@ class AdaptiveAppBar {
       actions: actions ?? this.actions,
       leading: leading ?? this.leading,
       useNativeToolbar: useNativeToolbar ?? this.useNativeToolbar,
+      topPadding: topPadding ?? this.topPadding,
       tintColor: tintColor ?? this.tintColor,
       cupertinoNavigationBar:
           cupertinoNavigationBar ?? this.cupertinoNavigationBar,

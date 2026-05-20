@@ -16,9 +16,11 @@ class IOS26Scaffold extends StatefulWidget {
     this.title,
     this.actions,
     this.leading,
+    this.toolbarTopPadding = 0,
     this.tintColor,
     this.minimizeBehavior = TabBarMinimizeBehavior.automatic,
     this.enableBlur = true,
+    this.extendBodyBehindAppBar = false,
     this.useHeroBackButton = true,
     this.tabBarHidden = false,
     this.resizeToAvoidBottomInset,
@@ -29,9 +31,11 @@ class IOS26Scaffold extends StatefulWidget {
   final String? title;
   final List<AdaptiveAppBarAction>? actions;
   final Widget? leading;
+  final double toolbarTopPadding;
   final Color? tintColor;
   final TabBarMinimizeBehavior minimizeBehavior;
   final bool enableBlur;
+  final bool extendBodyBehindAppBar;
   final bool useHeroBackButton;
   final bool tabBarHidden;
   final bool? resizeToAvoidBottomInset;
@@ -186,7 +190,19 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
     final showNativeView = isCurrentRoute || isPopping;
     final modalSheetScope = AdaptiveModalSheetScope.maybeOf(context);
     final toolbarUsesSafeArea = modalSheetScope == null;
-    final toolbarTopPadding = modalSheetScope?.navigationBarTopPadding ?? 0.0;
+    final toolbarTopPadding =
+        widget.toolbarTopPadding +
+        (modalSheetScope?.navigationBarTopPadding ?? 0.0);
+    final mediaQuery = MediaQuery.of(context);
+    final toolbarSafePadding = toolbarUsesSafeArea
+        ? (mediaQuery.viewPadding.top > 0
+              ? mediaQuery.viewPadding.top
+              : mediaQuery.padding.top)
+        : 0.0;
+    final toolbarContentTopInset =
+        hasToolbarContent && !widget.extendBodyBehindAppBar
+        ? 44.0 + toolbarSafePadding + toolbarTopPadding
+        : 0.0;
 
     // Get brightness and determine text color
     final brightness = MediaQuery.platformBrightnessOf(context);
@@ -194,24 +210,38 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
         ? CupertinoColors.white
         : CupertinoColors.black;
 
+    Widget content = DefaultTextStyle(
+      style: TextStyle(
+        color: textColor,
+        fontSize: 17, // iOS default
+      ),
+      child: widget.children.length == 1
+          ? widget.children.first
+          : IndexedStack(
+              index: widget.bottomNavigationBar?.selectedIndex ?? 0,
+              sizing: StackFit.expand,
+              children: widget.children,
+            ),
+    );
+
+    if (toolbarContentTopInset > 0) {
+      content = MediaQuery(
+        data: mediaQuery
+            .removePadding(removeTop: true)
+            .copyWith(viewPadding: mediaQuery.viewPadding.copyWith(top: 0)),
+        child: Padding(
+          padding: EdgeInsets.only(top: toolbarContentTopInset),
+          child: content,
+        ),
+      );
+    }
+
     // Build the stack content
     final stackContent = Stack(
       children: [
         // Content - full screen - use KeepAlive to prevent rebuild
         // Wrap content with DefaultTextStyle to ensure proper text color
-        DefaultTextStyle(
-          style: TextStyle(
-            color: textColor,
-            fontSize: 17, // iOS default
-          ),
-          child: widget.children.length == 1
-              ? widget.children.first
-              : IndexedStack(
-                  index: widget.bottomNavigationBar?.selectedIndex ?? 0,
-                  sizing: StackFit.expand,
-                  children: widget.children,
-                ),
-        ),
+        content,
         // Top toolbar - iOS 26 Liquid Glass style - only show if there's content
         if (hasToolbarContent)
           Positioned(

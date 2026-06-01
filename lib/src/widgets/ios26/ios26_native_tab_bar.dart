@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../adaptive_scaffold.dart';
 
@@ -145,16 +146,14 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   List<String> _mapSymbols() =>
       widget.destinations.map((e) => _extractSymbol(e.icon)).toList();
 
-  List<String> _mapAssetIcons() =>
-      widget.destinations
-          .map((e) => e.iconAsset ?? _extractAssetPath(e.icon))
-          .toList();
+  List<String> _mapAssetIcons() => widget.destinations
+      .map((e) => e.iconAsset ?? _extractAssetPath(e.icon))
+      .toList();
 
   List<String> _mapSelectedAssetIcons() => widget.destinations
       .map(
         (e) =>
-            e.selectedIconAsset ??
-            _extractAssetPath(e.selectedIcon ?? e.icon),
+            e.selectedIconAsset ?? _extractAssetPath(e.selectedIcon ?? e.icon),
       )
       .toList();
 
@@ -206,6 +205,7 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
         'isDark': _isDark,
         'isRtl': _isRtl,
         'minimizeBehavior': widget.minimizeBehavior.index,
+        'hidden': widget.hidden,
         if (_effectiveTint != null) 'tint': _colorToARGB(_effectiveTint!),
         if (widget.unselectedItemTint != null)
           'unselectedItemTint': _colorToARGB(widget.unselectedItemTint!),
@@ -219,6 +219,9 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
               creationParams: creationParams,
               creationParamsCodec: const StandardMessageCodec(),
               onPlatformViewCreated: _onCreated,
+              hitTestBehavior: widget.hidden
+                  ? PlatformViewHitTestBehavior.transparent
+                  : PlatformViewHitTestBehavior.opaque,
               gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
                 Factory<TapGestureRecognizer>(() => TapGestureRecognizer()),
               },
@@ -226,7 +229,10 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
           : const SizedBox.shrink();
 
       final h = widget.height ?? _intrinsicHeight ?? 50.0;
-      return SizedBox(height: h, child: platformView);
+      return SizedBox(
+        height: h,
+        child: IgnorePointer(ignoring: widget.hidden, child: platformView),
+      );
     }
 
     // Fallback for non-iOS
@@ -504,8 +510,11 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
         await ch.invokeMethod('setStyle', style);
       }
 
-      await ch.invokeMethod('setSelectedIndex', {'index': widget.selectedIndex});
+      await ch.invokeMethod('setSelectedIndex', {
+        'index': widget.selectedIndex,
+      });
       _lastIndex = widget.selectedIndex;
+      await _syncHiddenIfNeeded();
       await _requestIntrinsicSize();
     } catch (_) {}
   }

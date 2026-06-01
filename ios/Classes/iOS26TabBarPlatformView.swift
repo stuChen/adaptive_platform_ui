@@ -68,6 +68,7 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
         var tint: UIColor? = nil
         var bg: UIColor? = nil
         var minimize: Int = 3 // automatic
+        var hidden: Bool = false
 
         var unselectedTint: UIColor? = nil
 
@@ -96,11 +97,14 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
             }
             if let n = dict["backgroundColor"] as? NSNumber { bg = Self.colorFromARGB(n.intValue) }
             if let m = dict["minimizeBehavior"] as? NSNumber { minimize = m.intValue }
+            if let v = dict["hidden"] as? NSNumber { hidden = v.boolValue }
         }
 
         super.init()
 
         container.backgroundColor = .clear
+        container.isHidden = hidden
+        container.isUserInteractionEnabled = !hidden
         if #available(iOS 13.0, *) {
             container.overrideUserInterfaceStyle = isDark ? .dark : .light
         }
@@ -110,6 +114,7 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
         let bar = UITabBar(frame: .zero)
         tabBar = bar
         bar.delegate = self
+        bar.isUserInteractionEnabled = !hidden
         bar.translatesAutoresizingMaskIntoConstraints = false
         bar.semanticContentAttribute = isRtl ? .forceRightToLeft : .forceLeftToRight
         container.semanticContentAttribute = isRtl ? .forceRightToLeft : .forceLeftToRight
@@ -605,6 +610,8 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
             }
 
             self.container.isHidden = hidden
+            self.container.isUserInteractionEnabled = !hidden
+            self.tabBar?.isUserInteractionEnabled = !hidden
             result(nil)
 
         case "setBadgeCounts":

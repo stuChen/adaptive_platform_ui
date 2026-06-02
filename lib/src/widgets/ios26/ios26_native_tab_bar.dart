@@ -34,6 +34,8 @@ class IOS26NativeTabBar extends StatefulWidget {
   /// Whether the native tab bar is hidden.
   /// Use this to hide the tab bar when showing modal bottom sheets
   /// to prevent native platform views from bleeding through.
+  /// Hidden changes are animated by the native iOS bridge while Flutter
+  /// disables hit testing immediately for the covered bottom area.
   final bool hidden;
 
   /// Tab bar minimize behavior (iOS 26+)

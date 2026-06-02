@@ -35,6 +35,7 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
     private var currentSelectedNetworkIcons: [String] = []
     private var currentSearchFlags: [Bool] = []
     private var currentBadgeCounts: [Int?] = []
+    private var isTabBarHidden: Bool = false
     private let imageCache = NSCache<NSString, UIImage>()
 
     init(
@@ -102,9 +103,12 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
 
         super.init()
 
+        isTabBarHidden = hidden
         container.backgroundColor = .clear
         container.isHidden = hidden
         container.isUserInteractionEnabled = !hidden
+        container.alpha = hidden ? 0 : 1
+        container.transform = hidden ? hiddenTabBarTransform() : .identity
         if #available(iOS 13.0, *) {
             container.overrideUserInterfaceStyle = isDark ? .dark : .light
         }
@@ -357,7 +361,65 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
 
         bar.setNeedsLayout()
         bar.layoutIfNeeded()
+        if isTabBarHidden {
+            // 隐藏状态下尺寸变化时重新计算位移，避免旋转或分屏后露出底部边缘。
+            container.transform = hiddenTabBarTransform()
+        }
         container.setNeedsLayout()
+    }
+
+    private func hiddenTabBarTransform() -> CGAffineTransform {
+        let measuredHeight = container.bounds.height
+        let fallbackHeight = tabBar?.sizeThatFits(
+            CGSize(width: container.bounds.width, height: CGFloat.greatestFiniteMagnitude)
+        ).height ?? 50.0
+        let offset = max(measuredHeight, fallbackHeight) + 8.0
+        return CGAffineTransform(translationX: 0, y: offset)
+    }
+
+    private func setTabBarHidden(_ hidden: Bool, animated: Bool = true) {
+        guard hidden != isTabBarHidden || container.isHidden != hidden else { return }
+
+        isTabBarHidden = hidden
+        container.layer.removeAllAnimations()
+
+        // 动画执行期间始终关闭原生点击，避免半透明或滑动中的 tabbar 响应误触。
+        container.isUserInteractionEnabled = false
+        tabBar?.isUserInteractionEnabled = false
+
+        let applyFinalState = {
+            self.container.alpha = hidden ? 0 : 1
+            self.container.transform = hidden ? self.hiddenTabBarTransform() : .identity
+        }
+
+        if !animated {
+            container.isHidden = hidden
+            applyFinalState()
+            container.isUserInteractionEnabled = !hidden
+            tabBar?.isUserInteractionEnabled = !hidden
+            return
+        }
+
+        if !hidden {
+            // 出现时先把原生视图放到屏幕下方，再向上滑回原位。
+            container.isHidden = false
+            container.alpha = 0
+            container.transform = hiddenTabBarTransform()
+        }
+
+        UIView.animate(
+            withDuration: 0.28,
+            delay: 0,
+            options: [.curveEaseInOut, .beginFromCurrentState],
+            animations: applyFinalState,
+            completion: { [weak self] _ in
+                guard let self = self else { return }
+                guard self.isTabBarHidden == hidden else { return }
+                self.container.isHidden = hidden
+                self.container.isUserInteractionEnabled = !hidden
+                self.tabBar?.isUserInteractionEnabled = !hidden
+            }
+        )
     }
 
     private func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -609,9 +671,7 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
                 return
             }
 
-            self.container.isHidden = hidden
-            self.container.isUserInteractionEnabled = !hidden
-            self.tabBar?.isUserInteractionEnabled = !hidden
+            self.setTabBarHidden(hidden)
             result(nil)
 
         case "setBadgeCounts":

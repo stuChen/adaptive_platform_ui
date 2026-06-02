@@ -188,6 +188,8 @@ class AdaptiveScaffold extends StatefulWidget {
   /// Whether to hide the native tab bar (iOS 26+ only).
   /// Use this to hide the tab bar when showing modal bottom sheets
   /// to prevent native platform views from bleeding through.
+  /// iOS 26 native tab bars slide downward when hidden and slide upward
+  /// when shown again.
   final bool tabBarHidden;
 
   @override

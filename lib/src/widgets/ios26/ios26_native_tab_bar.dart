@@ -176,6 +176,10 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   @override
   Widget build(BuildContext context) {
     if (!kIsWeb && Platform.isIOS) {
+      if (widget.hidden) {
+        return const SizedBox.shrink();
+      }
+
       final labels = widget.destinations.map((e) => e.label).toList();
       final symbols = _mapSymbols();
       final assetIcons = _mapAssetIcons();

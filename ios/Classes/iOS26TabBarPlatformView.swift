@@ -3,7 +3,18 @@ import UIKit
 
 private final class LayoutAwareTabBarContainerView: UIView {
     var onWidthChanged: ((CGFloat) -> Void)?
+    var ignoresHitTesting: Bool = false
     private var lastReportedWidth: CGFloat = 0
+
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        guard !ignoresHitTesting else { return false }
+        return super.point(inside: point, with: event)
+    }
+
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        guard !ignoresHitTesting else { return nil }
+        return super.hitTest(point, with: event)
+    }
 
     override func layoutSubviews() {
         super.layoutSubviews()
@@ -105,6 +116,7 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
 
         isTabBarHidden = hidden
         container.backgroundColor = .clear
+        container.ignoresHitTesting = hidden
         container.isHidden = hidden
         container.isUserInteractionEnabled = !hidden
         container.alpha = hidden ? 0 : 1
@@ -384,6 +396,7 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
         container.layer.removeAllAnimations()
 
         // 动画执行期间始终关闭原生点击，避免半透明或滑动中的 tabbar 响应误触。
+        container.ignoresHitTesting = true
         container.isUserInteractionEnabled = false
         tabBar?.isUserInteractionEnabled = false
 
@@ -395,6 +408,7 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
         if !animated {
             container.isHidden = hidden
             applyFinalState()
+            container.ignoresHitTesting = hidden
             container.isUserInteractionEnabled = !hidden
             tabBar?.isUserInteractionEnabled = !hidden
             return
@@ -416,6 +430,7 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
                 guard let self = self else { return }
                 guard self.isTabBarHidden == hidden else { return }
                 self.container.isHidden = hidden
+                self.container.ignoresHitTesting = hidden
                 self.container.isUserInteractionEnabled = !hidden
                 self.tabBar?.isUserInteractionEnabled = !hidden
             }

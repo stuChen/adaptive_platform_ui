@@ -414,12 +414,8 @@ class _AdaptiveIOS26SheetDragGestureDetectorState<T>
   void dispose() {
     _recognizer.dispose();
     if (_dragGestureController != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_dragGestureController?.navigator.mounted ?? false) {
-          _dragGestureController?.navigator.didStopUserGesture();
-        }
-        _dragGestureController = null;
-      });
+      _dragGestureController!._stopUserGesture();
+      _dragGestureController = null;
     }
     super.dispose();
   }
@@ -483,6 +479,17 @@ class _AdaptiveIOS26SheetDragGestureController<T> {
   final ValueGetter<bool> getIsActive;
   final ValueGetter<bool> getIsCurrent;
   final double topGap;
+  bool _didStopUserGesture = false;
+
+  void _stopUserGesture() {
+    if (_didStopUserGesture) {
+      return;
+    }
+    _didStopUserGesture = true;
+    if (navigator.mounted) {
+      navigator.didStopUserGesture();
+    }
+  }
 
   void dragUpdate(double delta) {
     popDragController.value -=
@@ -495,6 +502,7 @@ class _AdaptiveIOS26SheetDragGestureController<T> {
     const Curve animationCurve = Curves.easeOut;
     final bool isCurrent = getIsCurrent();
     final bool animateForward;
+    TickerFuture? pendingAnimation;
 
     if (!isCurrent) {
       animateForward = getIsActive();
@@ -505,7 +513,7 @@ class _AdaptiveIOS26SheetDragGestureController<T> {
     }
 
     if (animateForward) {
-      popDragController.animateTo(
+      pendingAnimation = popDragController.animateTo(
         1.0,
         duration: _kIOS26SheetDroppedDragAnimationDuration,
         curve: animationCurve,
@@ -515,8 +523,8 @@ class _AdaptiveIOS26SheetDragGestureController<T> {
         navigator.pop();
       }
 
-      if (popDragController.isAnimating) {
-        popDragController.animateBack(
+      if (!popDragController.isDismissed) {
+        pendingAnimation = popDragController.animateBack(
           0.0,
           duration: _kIOS26SheetDroppedDragAnimationDuration,
           curve: animationCurve,
@@ -524,15 +532,10 @@ class _AdaptiveIOS26SheetDragGestureController<T> {
       }
     }
 
-    if (popDragController.isAnimating) {
-      void animationStatusCallback(AnimationStatus status) {
-        navigator.didStopUserGesture();
-        popDragController.removeStatusListener(animationStatusCallback);
-      }
-
-      popDragController.addStatusListener(animationStatusCallback);
+    if (pendingAnimation != null) {
+      pendingAnimation.whenCompleteOrCancel(_stopUserGesture);
     } else {
-      navigator.didStopUserGesture();
+      _stopUserGesture();
     }
   }
 }

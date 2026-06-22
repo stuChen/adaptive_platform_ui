@@ -187,13 +187,6 @@ class AdaptiveIOS26SheetRoute<T> extends PageRoute<T>
           ),
           context,
         );
-    final Color borderColor = CupertinoDynamicColor.resolve(
-      CupertinoDynamicColor.withBrightness(
-        color: const Color(0x40FFFFFF),
-        darkColor: const Color(0x22FFFFFF),
-      ),
-      context,
-    );
     final double effectiveNavigationBarTopPadding =
         navigationBarTopPadding + (showDragHandle ? 18 : 0);
 
@@ -223,7 +216,6 @@ class AdaptiveIOS26SheetRoute<T> extends PageRoute<T>
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: resolvedBackground,
-              border: Border.all(color: borderColor, width: 0.8),
               borderRadius: BorderRadius.vertical(
                 top: Radius.circular(cornerRadius),
               ),

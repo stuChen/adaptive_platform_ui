@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -5,6 +6,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../adaptive_scaffold.dart';
+
+const _kHiddenTabBarUnmountDelay = Duration(milliseconds: 320);
 
 /// Native iOS 26 tab bar using UITabBar platform view
 class IOS26NativeTabBar extends StatefulWidget {
@@ -66,6 +69,9 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   List<int?>? _lastBadgeCounts;
   TabBarMinimizeBehavior? _lastMinimizeBehavior;
   bool? _lastHidden;
+  Timer? _hiddenUnmountTimer;
+  late bool _keepNativeViewMounted;
+  bool _mountNativeViewHidden = false;
 
   bool get _isDark =>
       MediaQuery.platformBrightnessOf(context) == Brightness.dark;
@@ -74,8 +80,16 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
       widget.tint ?? CupertinoTheme.of(context).primaryColor;
 
   @override
+  void initState() {
+    super.initState();
+    _keepNativeViewMounted = !widget.hidden;
+    _mountNativeViewHidden = widget.hidden;
+  }
+
+  @override
   void didUpdateWidget(covariant IOS26NativeTabBar oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _updateNativeViewMountForHiddenChange(oldWidget);
     _syncPropsToNativeIfNeeded();
   }
 
@@ -89,8 +103,34 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
 
   @override
   void dispose() {
+    _hiddenUnmountTimer?.cancel();
     _channel?.setMethodCallHandler(null);
     super.dispose();
+  }
+
+  void _updateNativeViewMountForHiddenChange(IOS26NativeTabBar oldWidget) {
+    if (oldWidget.hidden == widget.hidden) return;
+
+    _hiddenUnmountTimer?.cancel();
+
+    if (widget.hidden) {
+      _keepNativeViewMounted = true;
+      _mountNativeViewHidden = false;
+      _hiddenUnmountTimer = Timer(_kHiddenTabBarUnmountDelay, () {
+        if (!mounted || !widget.hidden) return;
+        setState(() {
+          _keepNativeViewMounted = false;
+          _mountNativeViewHidden = false;
+          _channel = null;
+          _lastHidden = null;
+        });
+      });
+      return;
+    }
+
+    final wasMounted = _keepNativeViewMounted;
+    _keepNativeViewMounted = true;
+    _mountNativeViewHidden = !wasMounted;
   }
 
   int _colorToARGB(Color color) {
@@ -176,7 +216,7 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   @override
   Widget build(BuildContext context) {
     if (!kIsWeb && Platform.isIOS) {
-      if (widget.hidden) {
+      if (widget.hidden && !_keepNativeViewMounted) {
         return const SizedBox.shrink();
       }
 
@@ -195,6 +235,8 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
           .map((e) => e.addSpacerAfter)
           .toList();
 
+      final hiddenForNativeView = widget.hidden || _mountNativeViewHidden;
+
       final creationParams = <String, dynamic>{
         'labels': labels,
         'sfSymbols': symbols,
@@ -211,7 +253,7 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
         'isDark': _isDark,
         'isRtl': _isRtl,
         'minimizeBehavior': widget.minimizeBehavior.index,
-        'hidden': widget.hidden,
+        'hidden': hiddenForNativeView,
         if (_effectiveTint != null) 'tint': _colorToARGB(_effectiveTint!),
         if (widget.unselectedItemTint != null)
           'unselectedItemTint': _colorToARGB(widget.unselectedItemTint!),
@@ -219,13 +261,13 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
           'backgroundColor': _colorToARGB(widget.backgroundColor!),
       };
 
-      final platformView = widget.showNativeView
+      final platformView = widget.showNativeView && _keepNativeViewMounted
           ? UiKitView(
               viewType: 'adaptive_platform_ui/ios26_tab_bar',
               creationParams: creationParams,
               creationParamsCodec: const StandardMessageCodec(),
               onPlatformViewCreated: _onCreated,
-              hitTestBehavior: widget.hidden
+              hitTestBehavior: hiddenForNativeView
                   ? PlatformViewHitTestBehavior.transparent
                   : PlatformViewHitTestBehavior.opaque,
               gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
@@ -237,7 +279,10 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
       final h = widget.height ?? _intrinsicHeight ?? 50.0;
       return SizedBox(
         height: h,
-        child: IgnorePointer(ignoring: widget.hidden, child: platformView),
+        child: IgnorePointer(
+          ignoring: hiddenForNativeView,
+          child: platformView,
+        ),
       );
     }
 
@@ -521,7 +566,15 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
       });
       _lastIndex = widget.selectedIndex;
       await _syncHiddenIfNeeded();
+      _clearMountHiddenAfterInitialShow();
       await _requestIntrinsicSize();
     } catch (_) {}
+  }
+
+  void _clearMountHiddenAfterInitialShow() {
+    if (!mounted || widget.hidden || !_mountNativeViewHidden) return;
+    setState(() {
+      _mountNativeViewHidden = false;
+    });
   }
 }

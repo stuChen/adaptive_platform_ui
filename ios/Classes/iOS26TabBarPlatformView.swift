@@ -48,7 +48,17 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
     private var currentBadgeCounts: [Int?] = []
     private var isTabBarHidden: Bool = false
     private let imageCache = NSCache<NSString, UIImage>()
+    
+    private func applyPreferredTabBarLayout(to bar: UITabBar) {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return }
 
+        if #available(iOS 17.0, *) {
+            // Force the tab bar to resolve against the compact-width layout
+            // so iPad keeps the stacked icon-over-title presentation.
+            bar.traitOverrides.horizontalSizeClass = .compact
+        }
+    }
+    
     init(
         frame: CGRect,
         viewId: Int64,
@@ -134,7 +144,7 @@ class iOS26TabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelegate {
         bar.translatesAutoresizingMaskIntoConstraints = false
         bar.semanticContentAttribute = isRtl ? .forceRightToLeft : .forceLeftToRight
         container.semanticContentAttribute = isRtl ? .forceRightToLeft : .forceLeftToRight
-
+        applyPreferredTabBarLayout(to: bar)
         // iOS 26+ special handling - Skip appearance, use direct properties only
         if #available(iOS 26.0, *) {
             // For iOS 26, we skip UITabBarAppearance as it interferes with custom colors

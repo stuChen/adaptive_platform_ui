@@ -110,7 +110,7 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
                 // Apply to items that don't have their own per-action tint
                 for item in (navigationItem.leftBarButtonItems ?? []) + (navigationItem.rightBarButtonItems ?? []) {
                     if !perActionTintTags.contains(item.tag) {
-                        item.tintColor = color
+                        applyTint(color, to: item)
                     }
                 }
             }
@@ -230,6 +230,7 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
 
             for (index, action) in actions.enumerated() {
                 var button: UIBarButtonItem?
+                let title = action["title"] as? String
 
                 if let assetName = action["imageAsset"] as? String {
                     let package = action["imagePackage"] as? String
@@ -239,12 +240,22 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
                         package: package,
                         pointSize: pointSize
                     ) {
-                        button = UIBarButtonItem(
-                            image: image,
-                            style: .plain,
-                            target: self,
-                            action: #selector(actionTapped(_:))
-                        )
+                        if let title {
+                            button = UIBarButtonItem(
+                                customView: makeTitleImageButton(
+                                    title: title,
+                                    image: image,
+                                    index: index
+                                )
+                            )
+                        } else {
+                            button = UIBarButtonItem(
+                                image: image,
+                                style: .plain,
+                                target: self,
+                                action: #selector(actionTapped(_:))
+                            )
+                        }
                     }
                 } else if let icon = action["icon"] as? String {
                     button = UIBarButtonItem(
@@ -253,7 +264,7 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
                         target: self,
                         action: #selector(actionTapped(_:))
                     )
-                } else if let title = action["title"] as? String {
+                } else if let title {
                     button = UIBarButtonItem(
                         title: title,
                         style: .plain,
@@ -274,7 +285,7 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
 
                     // Apply per-action tint color
                     if let n = action["tint"] as? NSNumber {
-                        btn.tintColor = Self.colorFromARGB(n.intValue)
+                        applyTint(Self.colorFromARGB(n.intValue), to: btn)
                         perActionTintTags.insert(index)
                     }
 
@@ -323,6 +334,10 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
         channel.invokeMethod("onActionTapped", arguments: ["index": sender.tag])
     }
 
+    @objc private func customActionTapped(_ sender: UIButton) {
+        channel.invokeMethod("onActionTapped", arguments: ["index": sender.tag])
+    }
+
     private func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         switch call.method {
         case "updateTitle":
@@ -349,7 +364,7 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
                 if let globalTint = navigationBar.tintColor {
                     for item in (navigationItem.leftBarButtonItems ?? []) + (navigationItem.rightBarButtonItems ?? []) {
                         if !perActionTintTags.contains(item.tag) {
-                            item.tintColor = globalTint
+                            applyTint(globalTint, to: item)
                         }
                     }
                 }
@@ -364,7 +379,7 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
                         navigationBar.tintColor = color
                         for item in (navigationItem.leftBarButtonItems ?? []) + (navigationItem.rightBarButtonItems ?? []) {
                             if !perActionTintTags.contains(item.tag) {
-                                item.tintColor = color
+                                applyTint(color, to: item)
                             }
                         }
                     } else if tintValue is NSNull {
@@ -372,7 +387,7 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
                         navigationBar.tintColor = nil
                         for item in (navigationItem.leftBarButtonItems ?? []) + (navigationItem.rightBarButtonItems ?? []) {
                             if !perActionTintTags.contains(item.tag) {
-                                item.tintColor = nil
+                                applyTint(nil, to: item)
                             }
                         }
                     }
@@ -390,6 +405,42 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
         let g = CGFloat((argb >> 8) & 0xFF) / 255.0
         let b = CGFloat(argb & 0xFF) / 255.0
         return UIColor(red: r, green: g, blue: b, alpha: a)
+    }
+
+    private func makeTitleImageButton(title: String, image: UIImage, index: Int) -> UIButton {
+        let button = UIButton(type: .system)
+        button.tag = index
+        button.addTarget(self, action: #selector(customActionTapped(_:)), for: .touchUpInside)
+
+        if #available(iOS 15.0, *) {
+            var configuration = UIButton.Configuration.plain()
+            configuration.title = title
+            configuration.image = image
+            configuration.imagePlacement = .leading
+            configuration.imagePadding = 4
+            configuration.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
+            button.configuration = configuration
+        } else {
+            button.setImage(image, for: .normal)
+            button.setTitle(title, for: .normal)
+            button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -2, bottom: 0, right: 2)
+            button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 2, bottom: 0, right: -2)
+        }
+
+        button.sizeToFit()
+        return button
+    }
+
+    private func applyTint(_ color: UIColor?, to item: UIBarButtonItem) {
+        item.tintColor = color
+
+        guard let button = item.customView as? UIButton else { return }
+        button.tintColor = color
+        button.setTitleColor(color, for: .normal)
+
+        if #available(iOS 15.0, *) {
+            button.configuration?.baseForegroundColor = color
+        }
     }
 
     private func loadActionImage(

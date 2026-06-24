@@ -333,18 +333,12 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
                     children: widget.appBar!.actions!.map((action) {
-                      Widget actionChild;
-                      if (action.title != null) {
-                        actionChild = Text(action.title!);
-                      } else if (action.icon != null) {
-                        actionChild = Icon(action.icon!);
-                      } else {
-                        actionChild = const Icon(CupertinoIcons.circle);
-                      }
                       return CupertinoButton(
                         padding: EdgeInsets.zero,
                         onPressed: action.onPressed,
-                        child: actionChild,
+                        child: action.buildContent(
+                          fallbackIcon: CupertinoIcons.circle,
+                        ),
                       );
                     }).toList(),
                   )
@@ -546,18 +540,12 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               ? Row(
                   mainAxisSize: MainAxisSize.min,
                   children: widget.appBar!.actions!.map((action) {
-                    Widget actionChild;
-                    if (action.title != null) {
-                      actionChild = Text(action.title!);
-                    } else if (action.icon != null) {
-                      actionChild = Icon(action.icon!);
-                    } else {
-                      actionChild = const Icon(CupertinoIcons.circle);
-                    }
                     return CupertinoButton(
                       padding: EdgeInsets.zero,
                       onPressed: action.onPressed,
-                      child: actionChild,
+                      child: action.buildContent(
+                        fallbackIcon: CupertinoIcons.circle,
+                      ),
                     );
                   }).toList(),
                 )
@@ -626,6 +614,15 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               ? Text(widget.appBar!.title!)
               : null,
           actions: widget.appBar!.actions?.map((action) {
+            if (action.title != null && action.hasVisualContent) {
+              return TextButton.icon(
+                onPressed: action.onPressed,
+                icon: action.buildVisualContent(
+                  fallbackIcon: action.icon ?? Icons.circle,
+                ),
+                label: Text(action.title!),
+              );
+            }
             if (action.title != null) {
               return TextButton(
                 onPressed: action.onPressed,
@@ -633,7 +630,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               );
             }
             return IconButton(
-              icon: action.buildContent(
+              icon: action.buildVisualContent(
                 fallbackIcon: action.icon ?? Icons.circle,
               ),
               onPressed: action.onPressed,
@@ -732,6 +729,15 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
             ? Text(widget.appBar!.title!)
             : null,
         actions: widget.appBar!.actions?.map((action) {
+          if (action.title != null && action.hasVisualContent) {
+            return TextButton.icon(
+              onPressed: action.onPressed,
+              icon: action.buildVisualContent(
+                fallbackIcon: action.icon ?? Icons.circle,
+              ),
+              label: Text(action.title!),
+            );
+          }
           if (action.title != null) {
             return TextButton(
               onPressed: action.onPressed,
@@ -739,7 +745,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
             );
           }
           return IconButton(
-            icon: action.buildContent(
+            icon: action.buildVisualContent(
               fallbackIcon: action.icon ?? Icons.circle,
             ),
             onPressed: action.onPressed,

@@ -65,7 +65,7 @@ class AdaptiveAppBarAction {
   final BoxFit imageFit;
 
   /// Text title for the action (optional)
-  /// If provided along with icons or image, title takes precedence
+  /// If provided together with an icon or image, both will be rendered.
   final String? title;
 
   /// Callback when the action is tapped
@@ -101,11 +101,15 @@ class AdaptiveAppBarAction {
   /// Whether this action requires the Flutter-rendered toolbar fallback.
   bool get requiresFlutterToolbar => image != null && image is! AssetImage;
 
-  /// Builds the visual content for Flutter-rendered toolbars.
-  Widget buildContent({required IconData fallbackIcon}) {
-    if (title != null) {
-      return Text(title!);
-    }
+  /// 判断当前 action 是否同时包含文字和可视元素。
+  bool get hasCombinedTitleAndVisual => title != null && hasVisualContent;
+
+  /// 判断当前 action 是否包含可视元素。
+  bool get hasVisualContent =>
+      iosSymbol != null || icon != null || image != null;
+
+  /// 构建仅包含图像或图标的视觉内容。
+  Widget buildVisualContent({required IconData fallbackIcon}) {
     if (image != null) {
       return Image(
         image: image!,
@@ -118,6 +122,26 @@ class AdaptiveAppBarAction {
       return Icon(icon!);
     }
     return Icon(fallbackIcon);
+  }
+
+  /// 构建 Flutter 侧可直接渲染的内容。
+  ///
+  /// 当 action 同时包含文字和图片/图标时，会在同一行里同时显示两者。
+  Widget buildContent({required IconData fallbackIcon}) {
+    if (hasCombinedTitleAndVisual) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          buildVisualContent(fallbackIcon: fallbackIcon),
+          const SizedBox(width: 4),
+          Text(title!),
+        ],
+      );
+    }
+    if (title != null) {
+      return Text(title!);
+    }
+    return buildVisualContent(fallbackIcon: fallbackIcon);
   }
 
   @override

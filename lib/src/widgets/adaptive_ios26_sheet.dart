@@ -36,6 +36,10 @@ class AdaptiveIOS26Sheet {
     double? topGap,
     bool showDragHandle = false,
     double cornerRadius = _kIOS26SheetCornerRadius,
+
+    /// Whether the sheet should shrink vertically to match the builder's
+    /// content instead of expanding to the full available sheet height.
+    bool fitContent = false,
     double navigationBarTopPadding = 10,
     Color? backgroundColor,
     RouteSettings? routeSettings,
@@ -93,6 +97,7 @@ class AdaptiveIOS26Sheet {
         topGap: topGap,
         showDragHandle: showDragHandle,
         cornerRadius: cornerRadius,
+        fitContent: fitContent,
         navigationBarTopPadding: navigationBarTopPadding,
         backgroundColor: backgroundColor,
         settings: routeSettings,
@@ -111,6 +116,7 @@ class AdaptiveIOS26SheetRoute<T> extends PageRoute<T>
     double? topGap,
     this.showDragHandle = false,
     this.cornerRadius = _kIOS26SheetCornerRadius,
+    this.fitContent = false,
     this.navigationBarTopPadding = 10,
     this.backgroundColor,
   }) : assert(
@@ -134,6 +140,10 @@ class AdaptiveIOS26SheetRoute<T> extends PageRoute<T>
 
   final bool showDragHandle;
   final double cornerRadius;
+
+  /// Whether this route keeps the sheet at content height while preserving the
+  /// same maximum height and bottom alignment as the full sheet.
+  final bool fitContent;
   final double navigationBarTopPadding;
   final Color? backgroundColor;
 
@@ -147,29 +157,30 @@ class AdaptiveIOS26SheetRoute<T> extends PageRoute<T>
     const double dragHandleWidth = 40.0;
 
     return Stack(
-      fit: StackFit.expand,
+      fit: fitContent ? StackFit.loose : StackFit.expand,
       children: <Widget>[
         builder(context),
-        IgnorePointer(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: Padding(
-              padding: const EdgeInsets.only(top: dragHandleTopPadding),
-              child: DecoratedBox(
-                decoration: ShapeDecoration(
-                  shape: RoundedSuperellipseBorder(
-                    borderRadius: const BorderRadius.all(
-                      Radius.circular(dragHandleWidth / 2),
+        Positioned(
+          left: 0,
+          right: 0,
+          top: dragHandleTopPadding,
+          child: IgnorePointer(
+            child: Center(
+              child: SizedBox(
+                height: dragHandleHeight,
+                width: dragHandleWidth,
+                child: DecoratedBox(
+                  decoration: ShapeDecoration(
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius: const BorderRadius.all(
+                        Radius.circular(dragHandleWidth / 2),
+                      ),
                     ),
+                    color: CupertinoDynamicColor.withBrightness(
+                      color: const Color(0x66777780),
+                      darkColor: const Color(0x80F2F2F7),
+                    ).resolveFrom(context),
                   ),
-                  color: CupertinoDynamicColor.withBrightness(
-                    color: const Color(0x66777780),
-                    darkColor: const Color(0x80F2F2F7),
-                  ).resolveFrom(context),
-                ),
-                child: const SizedBox(
-                  height: dragHandleHeight,
-                  width: dragHandleWidth,
                 ),
               ),
             ),
@@ -192,72 +203,89 @@ class AdaptiveIOS26SheetRoute<T> extends PageRoute<T>
         );
     final double effectiveNavigationBarTopPadding =
         navigationBarTopPadding + (showDragHandle ? 18 : 0);
+    final gradientStartColor = CupertinoDynamicColor.resolve(
+      CupertinoDynamicColor.withBrightness(
+        color: const Color(0x18FFFFFF),
+        darkColor: const Color(0x12FFFFFF),
+      ),
+      context,
+    );
+    final sheetContent = Stack(
+      fit: fitContent ? StackFit.loose : StackFit.expand,
+      children: [
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [gradientStartColor, CupertinoColors.transparent],
+              ),
+            ),
+          ),
+        ),
+        CupertinoUserInterfaceLevel(
+          data: CupertinoUserInterfaceLevelData.elevated,
+          child: AdaptiveModalSheetScope(
+            navigationBarTopPadding: effectiveNavigationBarTopPadding,
+            child: _AdaptiveIOS26SheetScope(child: _sheetWithHandle(context)),
+          ),
+        ),
+      ],
+    );
+
+    final clippedSheet = Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoDynamicColor.resolve(
+              CupertinoDynamicColor.withBrightness(
+                color: const Color(0x33000000),
+                darkColor: const Color(0x55000000),
+              ),
+              context,
+            ),
+            blurRadius: 32,
+            offset: const Offset(0, -8),
+          ),
+        ],
+      ),
+      child: ClipRSuperellipse(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(cornerRadius)),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: resolvedBackground,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(cornerRadius),
+            ),
+          ),
+          child: sheetContent,
+        ),
+      ),
+    );
+
+    Widget sheet = clippedSheet;
+    if (fitContent) {
+      sheet = LayoutBuilder(
+        builder: (context, constraints) {
+          return Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              width: constraints.maxWidth,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: constraints.maxHeight),
+                child: clippedSheet,
+              ),
+            ),
+          );
+        },
+      );
+    }
 
     return MediaQuery.removePadding(
       context: context,
       removeTop: true,
-      child: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: CupertinoDynamicColor.resolve(
-                CupertinoDynamicColor.withBrightness(
-                  color: const Color(0x33000000),
-                  darkColor: const Color(0x55000000),
-                ),
-                context,
-              ),
-              blurRadius: 32,
-              offset: const Offset(0, -8),
-            ),
-          ],
-        ),
-        child: ClipRSuperellipse(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(cornerRadius),
-          ),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: resolvedBackground,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(cornerRadius),
-              ),
-            ),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        CupertinoDynamicColor.resolve(
-                          CupertinoDynamicColor.withBrightness(
-                            color: const Color(0x18FFFFFF),
-                            darkColor: const Color(0x12FFFFFF),
-                          ),
-                          context,
-                        ),
-                        CupertinoColors.transparent,
-                      ],
-                    ),
-                  ),
-                ),
-                CupertinoUserInterfaceLevel(
-                  data: CupertinoUserInterfaceLevelData.elevated,
-                  child: AdaptiveModalSheetScope(
-                    navigationBarTopPadding: effectiveNavigationBarTopPadding,
-                    child: _AdaptiveIOS26SheetScope(
-                      child: _sheetWithHandle(context),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      child: sheet,
     );
   }
 

@@ -97,5 +97,12 @@ public class AdaptivePlatformUiPlugin: NSObject, FlutterPlugin {
             ios26BlurViewFactory,
             withId: "adaptive_platform_ui/ios26_blur_view"
         )
+
+        // Register iOS 26 modal barrier platform view
+        let ios26ModalBarrierFactory = iOS26ModalBarrierFactory()
+        registrar.register(
+            ios26ModalBarrierFactory,
+            withId: "adaptive_platform_ui/ios26_modal_barrier"
+        )
     }
 }

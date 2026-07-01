@@ -70,7 +70,7 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   TabBarMinimizeBehavior? _lastMinimizeBehavior;
   bool? _lastHidden;
   Timer? _hiddenUnmountTimer;
-  late bool _keepNativeViewMounted;
+  bool _keepNativeViewMounted = true;
   bool _mountNativeViewHidden = false;
 
   bool get _isDark =>
@@ -78,13 +78,6 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   bool get _isRtl => Directionality.of(context) == TextDirection.rtl;
   Color? get _effectiveTint =>
       widget.tint ?? CupertinoTheme.of(context).primaryColor;
-
-  @override
-  void initState() {
-    super.initState();
-    _keepNativeViewMounted = !widget.hidden;
-    _mountNativeViewHidden = widget.hidden;
-  }
 
   @override
   void didUpdateWidget(covariant IOS26NativeTabBar oldWidget) {
@@ -108,29 +101,40 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
     super.dispose();
   }
 
+  /// 在 hidden 状态变化时控制平台视图生命周期，保证先同步原生隐藏再释放命中区域。
   void _updateNativeViewMountForHiddenChange(IOS26NativeTabBar oldWidget) {
     if (oldWidget.hidden == widget.hidden) return;
 
     _hiddenUnmountTimer?.cancel();
 
     if (widget.hidden) {
+      // 隐藏时先保持 UiKitView 挂载，给 Swift 一次接收 setHidden 的机会。
       _keepNativeViewMounted = true;
       _mountNativeViewHidden = false;
-      _hiddenUnmountTimer = Timer(_kHiddenTabBarUnmountDelay, () {
-        if (!mounted || !widget.hidden) return;
-        setState(() {
-          _keepNativeViewMounted = false;
-          _mountNativeViewHidden = false;
-          _channel = null;
-          _lastHidden = null;
-        });
-      });
       return;
     }
 
+    // 重新显示时立刻挂载平台视图；若之前已卸载，会在 onCreated 后推送完整状态。
     final wasMounted = _keepNativeViewMounted;
     _keepNativeViewMounted = true;
     _mountNativeViewHidden = !wasMounted;
+  }
+
+  /// hidden 同步到原生后延迟卸载 UiKitView，避免隐藏后的平台视图继续吞底部点击。
+  void _scheduleHiddenUnmount() {
+    _hiddenUnmountTimer?.cancel();
+    if (!widget.hidden || !_keepNativeViewMounted) return;
+
+    _hiddenUnmountTimer = Timer(_kHiddenTabBarUnmountDelay, () {
+      if (!mounted || !widget.hidden) return;
+      setState(() {
+        _keepNativeViewMounted = false;
+        _mountNativeViewHidden = false;
+        _channel?.setMethodCallHandler(null);
+        _channel = null;
+        _lastHidden = null;
+      });
+    });
   }
 
   int _colorToARGB(Color color) {
@@ -504,6 +508,9 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
     if (_lastHidden == hidden) return;
     await ch.invokeMethod('setHidden', {'hidden': hidden});
     _lastHidden = hidden;
+    if (hidden) {
+      _scheduleHiddenUnmount();
+    }
   }
 
   Future<void> _requestIntrinsicSize() async {
@@ -566,6 +573,9 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
       });
       _lastIndex = widget.selectedIndex;
       await _syncHiddenIfNeeded();
+      if (widget.hidden) {
+        _scheduleHiddenUnmount();
+      }
       _clearMountHiddenAfterInitialShow();
       await _requestIntrinsicSize();
     } catch (_) {}

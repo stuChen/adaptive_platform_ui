@@ -1,5 +1,8 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 
 import 'adaptive_modal_sheet.dart';
 
@@ -356,15 +359,41 @@ mixin _AdaptiveIOS26SheetRouteTransitionMixin<T> on PageRoute<T> {
     Widget child,
   ) {
     final bool linearTransition = popGestureInProgress;
-    return CupertinoSheetTransition(
-      primaryRouteAnimation: animation,
-      secondaryRouteAnimation: secondaryAnimation,
-      linearTransition: linearTransition,
-      topGap: topGap,
-      child: _AdaptiveIOS26SheetDragGestureDetector<T>(
-        enabledCallback: () => enableDrag,
-        onStartPopGesture: () => _startPopGesture<T>(this, topGap),
-        child: child,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const _IOS26NativeModalBarrier(),
+        CupertinoSheetTransition(
+          primaryRouteAnimation: animation,
+          secondaryRouteAnimation: secondaryAnimation,
+          linearTransition: linearTransition,
+          topGap: topGap,
+          child: _AdaptiveIOS26SheetDragGestureDetector<T>(
+            enabledCallback: () => enableDrag,
+            onStartPopGesture: () => _startPopGesture<T>(this, topGap),
+            child: child,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _IOS26NativeModalBarrier extends StatelessWidget {
+  const _IOS26NativeModalBarrier();
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) {
+      return const SizedBox.shrink();
+    }
+
+    return IgnorePointer(
+      child: UiKitView(
+        viewType: 'adaptive_platform_ui/ios26_modal_barrier',
+        creationParams: const <String, dynamic>{},
+        creationParamsCodec: const StandardMessageCodec(),
+        hitTestBehavior: PlatformViewHitTestBehavior.transparent,
       ),
     );
   }

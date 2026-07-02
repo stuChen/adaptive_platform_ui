@@ -620,13 +620,13 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                 icon: action.buildVisualContent(
                   fallbackIcon: action.icon ?? Icons.circle,
                 ),
-                label: Text(action.title!),
+                label: action.buildTitleText(),
               );
             }
             if (action.title != null) {
               return TextButton(
                 onPressed: action.onPressed,
-                child: Text(action.title!),
+                child: action.buildTitleText(),
               );
             }
             return IconButton(
@@ -735,13 +735,13 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               icon: action.buildVisualContent(
                 fallbackIcon: action.icon ?? Icons.circle,
               ),
-              label: Text(action.title!),
+              label: action.buildTitleText(),
             );
           }
           if (action.title != null) {
             return TextButton(
               onPressed: action.onPressed,
-              child: Text(action.title!),
+              child: action.buildTitleText(),
             );
           }
           return IconButton(

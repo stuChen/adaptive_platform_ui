@@ -98,6 +98,13 @@ class AdaptiveAppBarAction {
   /// - iOS <26 / Android: Ignored
   final Color? tintColor;
 
+  /// Default text color for action titles across Flutter and native toolbars.
+  static const Color defaultTitleColor = Color(0xFF575757);
+
+  static const EdgeInsets _titleContentPadding = EdgeInsets.symmetric(
+    horizontal: 8,
+  );
+
   /// Whether this action requires the Flutter-rendered toolbar fallback.
   bool get requiresFlutterToolbar => image != null && image is! AssetImage;
 
@@ -124,24 +131,32 @@ class AdaptiveAppBarAction {
     return Icon(fallbackIcon);
   }
 
+  /// 构建统一颜色的 action 标题文本。
+  Widget buildTitleText() {
+    return Text(title!, style: const TextStyle(color: defaultTitleColor));
+  }
+
   /// 构建 Flutter 侧可直接渲染的内容。
   ///
   /// 当 action 同时包含文字和图片/图标时，会在同一行里同时显示两者。
   Widget buildContent({required IconData fallbackIcon}) {
+    Widget content;
     if (hasCombinedTitleAndVisual) {
-      return Row(
+      content = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           buildVisualContent(fallbackIcon: fallbackIcon),
           const SizedBox(width: 4),
-          Text(title!),
+          buildTitleText(),
         ],
       );
+    } else if (title != null) {
+      content = buildTitleText();
+    } else {
+      return buildVisualContent(fallbackIcon: fallbackIcon);
     }
-    if (title != null) {
-      return Text(title!);
-    }
-    return buildVisualContent(fallbackIcon: fallbackIcon);
+
+    return Padding(padding: _titleContentPadding, child: content);
   }
 
   @override
@@ -175,6 +190,7 @@ class AdaptiveAppBarAction {
     final map = <String, dynamic>{
       if (iosSymbol != null) 'icon': iosSymbol!,
       if (title != null) 'title': title!,
+      if (title != null) 'titleColor': defaultTitleColor.toARGB32(),
       'spacerAfter': spacerAfter.index, // 0=none, 1=fixed, 2=flexible
       if (prominent) 'prominent': true,
       if (tintColor != null) 'tint': tintColor!.toARGB32(),

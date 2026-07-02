@@ -231,6 +231,7 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
             for (index, action) in actions.enumerated() {
                 var button: UIBarButtonItem?
                 let title = action["title"] as? String
+                let titleColor = (action["titleColor"] as? NSNumber).map { Self.colorFromARGB($0.intValue) }
 
                 if let assetName = action["imageAsset"] as? String {
                     let package = action["imagePackage"] as? String
@@ -245,7 +246,8 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
                                 customView: makeTitleImageButton(
                                     title: title,
                                     image: image,
-                                    index: index
+                                    index: index,
+                                    titleColor: titleColor
                                 )
                             )
                         } else {
@@ -288,6 +290,7 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
                         applyTint(Self.colorFromARGB(n.intValue), to: btn)
                         perActionTintTags.insert(index)
                     }
+                    applyTitleColor(titleColor, to: btn)
 
                     // If no flexible spacer exists, all go to right
                     // If flexible exists, split by it
@@ -407,28 +410,54 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
         return UIColor(red: r, green: g, blue: b, alpha: a)
     }
 
-    private func makeTitleImageButton(title: String, image: UIImage, index: Int) -> UIButton {
+    private func makeTitleImageButton(
+        title: String,
+        image: UIImage,
+        index: Int,
+        titleColor: UIColor?
+    ) -> UIButton {
         let button = UIButton(type: .system)
         button.tag = index
         button.addTarget(self, action: #selector(customActionTapped(_:)), for: .touchUpInside)
 
         if #available(iOS 15.0, *) {
             var configuration = UIButton.Configuration.plain()
-            configuration.title = title
+            if let titleColor {
+                var attributedTitle = AttributedString(title)
+                attributedTitle.foregroundColor = titleColor
+                configuration.attributedTitle = attributedTitle
+            } else {
+                configuration.title = title
+            }
             configuration.image = image
             configuration.imagePlacement = .leading
             configuration.imagePadding = 4
-            configuration.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
+            configuration.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8)
             button.configuration = configuration
         } else {
             button.setImage(image, for: .normal)
             button.setTitle(title, for: .normal)
+            if let titleColor {
+                button.setTitleColor(titleColor, for: .normal)
+            }
+            button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 8, bottom: 0, right: 8)
             button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -2, bottom: 0, right: 2)
             button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 2, bottom: 0, right: -2)
         }
 
         button.sizeToFit()
         return button
+    }
+
+    private func applyTitleColor(_ color: UIColor?, to item: UIBarButtonItem) {
+        guard let color else { return }
+
+        let attributes: [NSAttributedString.Key: Any] = [.foregroundColor: color]
+        item.setTitleTextAttributes(attributes, for: .normal)
+        item.setTitleTextAttributes(attributes, for: .highlighted)
+
+        guard let button = item.customView as? UIButton else { return }
+        button.setTitleColor(color, for: .normal)
     }
 
     private func applyTint(_ color: UIColor?, to item: UIBarButtonItem) {

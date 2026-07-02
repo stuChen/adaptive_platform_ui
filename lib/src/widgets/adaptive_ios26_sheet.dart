@@ -40,6 +40,7 @@ class AdaptiveIOS26Sheet {
     /// Whether the sheet should shrink vertically to match the builder's
     /// content instead of expanding to the full available sheet height.
     bool fitContent = false,
+    bool transitionCoveredSheet = true,
     double navigationBarTopPadding = 10,
     Color? backgroundColor,
     RouteSettings? routeSettings,
@@ -98,6 +99,7 @@ class AdaptiveIOS26Sheet {
         showDragHandle: showDragHandle,
         cornerRadius: cornerRadius,
         fitContent: fitContent,
+        transitionCoveredSheet: transitionCoveredSheet,
         navigationBarTopPadding: navigationBarTopPadding,
         backgroundColor: backgroundColor,
         settings: routeSettings,
@@ -117,6 +119,7 @@ class AdaptiveIOS26SheetRoute<T> extends PageRoute<T>
     this.showDragHandle = false,
     this.cornerRadius = _kIOS26SheetCornerRadius,
     this.fitContent = false,
+    this.transitionCoveredSheet = true,
     this.navigationBarTopPadding = 10,
     this.backgroundColor,
   }) : assert(
@@ -144,6 +147,8 @@ class AdaptiveIOS26SheetRoute<T> extends PageRoute<T>
   /// Whether this route keeps the sheet at content height while preserving the
   /// same maximum height and bottom alignment as the full sheet.
   final bool fitContent;
+  @override
+  final bool transitionCoveredSheet;
   final double navigationBarTopPadding;
   final Color? backgroundColor;
 
@@ -336,6 +341,7 @@ mixin _AdaptiveIOS26SheetRouteTransitionMixin<T> on PageRoute<T> {
   bool get enableDrag;
   double get topGap;
   bool get hasCustomTopGap;
+  bool get transitionCoveredSheet;
 
   @override
   Duration get transitionDuration => _kIOS26SheetTransitionDuration;
@@ -375,8 +381,10 @@ mixin _AdaptiveIOS26SheetRouteTransitionMixin<T> on PageRoute<T> {
     if (hasCustomTopGap) {
       return false;
     }
-    return nextRoute is AdaptiveIOS26SheetRoute<dynamic> ||
-        nextRoute is CupertinoSheetRoute<dynamic>;
+    if (nextRoute is AdaptiveIOS26SheetRoute<dynamic>) {
+      return nextRoute.transitionCoveredSheet;
+    }
+    return nextRoute is CupertinoSheetRoute<dynamic>;
   }
 
   @override
